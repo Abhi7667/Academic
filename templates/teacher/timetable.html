@@ -1,0 +1,240 @@
+{% extends 'layout.html' %}
+
+{% block title %}Timetable Management - Academic Progress Hub{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h1 class="mb-0">Timetable Management</h1>
+        <p class="text-muted">Create and manage your class schedule</p>
+    </div>
+    {% if timetable_entries %}
+    <div class="col-auto">
+        <button class="btn btn-success" id="downloadBtn">
+            <i class="fas fa-download me-2"></i>Download Timetable
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Add New Schedule</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('teacher.timetable') }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        <label for="subject_id" class="form-label">{{ form.subject_id.label }}</label>
+                        {% if form.subject_id.choices|length > 0 %}
+                            {{ form.subject_id(class="form-select", id="subject_id") }}
+                        {% else %}
+                            {{ form.subject_id(class="form-select", id="subject_id", disabled=true) }}
+                            <small class="text-danger">No subjects available. Please <a href="{{ url_for('teacher.subjects') }}">add subjects</a> first.</small>
+                        {% endif %}
+                        {% if form.subject_id.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.subject_id.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="day_of_week" class="form-label">{{ form.day_of_week.label }}</label>
+                        {{ form.day_of_week(class="form-select", id="day_of_week") }}
+                        {% if form.day_of_week.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.day_of_week.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="start_time" class="form-label">{{ form.start_time.label }}</label>
+                        {{ form.start_time(class="form-control", id="start_time", type="time") }}
+                        {% if form.start_time.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.start_time.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="end_time" class="form-label">{{ form.end_time.label }}</label>
+                        {{ form.end_time(class="form-control", id="end_time", type="time") }}
+                        {% if form.end_time.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.end_time.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="room" class="form-label">{{ form.room.label }}</label>
+                        {{ form.room(class="form-control", id="room", placeholder="Enter room number/name") }}
+                        {% if form.room.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.room.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="grade" class="form-label">{{ form.grade.label }}</label>
+                        {{ form.grade(class="form-control", id="grade", placeholder="Enter grade/class") }}
+                        {% if form.grade.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.grade.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid">
+                        {% if form.subject_id.choices|length > 0 %}
+                            {{ form.submit(class="btn btn-primary") }}
+                        {% else %}
+                            {{ form.submit(class="btn btn-primary", disabled=true) }}
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Your Timetable</h5>
+            </div>
+            <div class="card-body">
+                {% if timetable_entries %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered text-center" id="timetableTable">
+                            <thead>
+                                <tr>
+                                    <th>Days/Periods</th>
+                                    {% for period in range(1, 7) %}
+                                        <th>Period {{ period }}</th>
+                                        {% if period == 3 %}
+                                            <th class="bg-light">Break</th>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+                                {% for day in days %}
+                                    <tr>
+                                        <th>{{ day }}</th>
+                                        {% for period in range(1, 7) %}
+                                            <td class="align-middle">
+                                                {% set found = false %}
+                                                {% for timetable, subject in timetable_entries %}
+                                                    {% if timetable.day_of_week == day and (timetable.start_time.hour - 8) == period %}
+                                                        {% set found = true %}
+                                                        <div class="{% if subject.type == 'Theory' %}bg-success{% else %}bg-primary{% endif %} text-white p-2 rounded">
+                                                            <span class="subject-name">{{ subject.name }}</span><br>
+                                                            <span class="teacher-name">{{ subject.teacher_name }}</span>
+                                                            <div class="details d-none">
+                                                                ({{ subject.code }})<br>
+                                                                Grade: {{ timetable.grade }}<br>
+                                                                Room: {{ timetable.room }}
+                                                            </div>
+                                                        </div>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% if not found %}
+                                                    <span>No Class</span>
+                                                {% else %}
+                                                    <span>Class Scheduled</span>
+                                                {% endif %}
+                                            </td>
+                                            {% if period == 3 %}
+                                                <td class="bg-light align-middle">RECESS</td>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="d-flex gap-3 justify-content-center">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success text-white px-3 py-2 rounded me-2"></div>
+                                <span>Theory Classes</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary text-white px-3 py-2 rounded me-2"></div>
+                                <span>Practical Classes</span>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <span data-feather="calendar" style="width: 48px; height: 48px;" class="text-muted mb-3"></span>
+                        <p class="mb-0">No timetable entries available yet.</p>
+                        <p class="text-muted">Add your first class schedule to get started.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const cells = document.querySelectorAll('td');
+        cells.forEach(cell => {
+            cell.addEventListener('click', function () {
+                const details = this.querySelector('.details');
+                if (details) {
+                    details.classList.toggle('d-none');
+                }
+            });
+        });
+
+        // Download functionality
+        document.getElementById('downloadBtn')?.addEventListener('click', function() {
+            const table = document.getElementById('timetableTable');
+            const html = table.outerHTML;
+            
+            // Create a styled blob
+            const style = `
+                <style>
+                    table { border-collapse: collapse; width: 100%; }
+                    th, td { border: 1px solid black; padding: 8px; text-align: center; }
+                    .bg-success { background-color: #28a745; color: white; }
+                    .bg-primary { background-color: #007bff; color: white; }
+                    .bg-light { background-color: #f8f9fa; }
+                    .details { display: block !important; }
+                </style>
+            `;
+            
+            const blob = new Blob([`<html><head>${style}</head><body>${html}</body></html>`], { type: 'application/vnd.ms-excel' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'timetable.xls';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        });
+    });
+</script>
+</div>
+{% endblock %}

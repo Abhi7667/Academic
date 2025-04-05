@@ -1,0 +1,108 @@
+{% extends 'layout.html' %}
+
+{% block title %}Notifications - Academic Progress Hub{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h1 class="mb-0">Notifications</h1>
+        <p class="text-muted">Send and manage notifications to students</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Send New Notification</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('notification.teacher_notifications') }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        <label for="title" class="form-label">{{ form.title.label }}</label>
+                        {{ form.title(class="form-control", id="title", placeholder="Enter notification title") }}
+                        {% if form.title.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.title.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="message" class="form-label">{{ form.message.label }}</label>
+                        {{ form.message(class="form-control", id="message", rows="5", placeholder="Enter notification message") }}
+                        {% if form.message.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.message.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="target_grade" class="form-label">{{ form.target_grade.label }}</label>
+                        {{ form.target_grade(class="form-control", id="target_grade", placeholder="e.g., Grade 10 (leave empty for all)") }}
+                        {% if form.target_grade.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.target_grade.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Sent Notifications</h5>
+            </div>
+            <div class="card-body">
+                {% if notifications %}
+                    <div class="list-group">
+                        {% for notification in notifications %}
+                            <div class="notification-item list-group-item list-group-item-action mb-3">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">{{ notification.title }}</h5>
+                                    <form method="POST" action="{{ url_for('notification.delete_notification', notification_id=notification.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Are you sure you want to delete this notification?">
+                                            <span data-feather="trash-2" style="width: 16px; height: 16px;"></span>
+                                        </button>
+                                    </form>
+                                </div>
+                                <p class="mb-1">{{ notification.message }}</p>
+                                <div class="d-flex w-100 justify-content-between align-items-center mt-2">
+                                    <small class="text-muted">
+                                        Target: {{ notification.target_grade if notification.target_grade else 'All Grades' }}
+                                    </small>
+                                    <small class="text-muted">
+                                        Sent: {{ notification.created_at.strftime('%d %b %Y, %I:%M %p') }}
+                                    </small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <span data-feather="bell" style="width: 48px; height: 48px;" class="text-muted mb-3"></span>
+                        <p class="mb-0">No notifications sent yet.</p>
+                        <p class="text-muted">Create your first notification to keep students updated.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

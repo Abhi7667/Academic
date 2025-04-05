@@ -1,0 +1,90 @@
+{% extends 'layout.html' %}
+
+{% block title %}My Timetable - Academic Progress Hub{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h1 class="mb-0">My Timetable</h1>
+        <p class="text-muted">View your weekly class schedule</p>
+    </div>
+    <div class="col-auto">
+        <select id="timetableFilter" class="form-select">
+            <option value="all">All Days</option>
+            {% for day in days %}
+                <option value="{{ day }}">{{ day }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="timetable-container">
+            {% set has_any_class = false %}
+            {% for day in days %}
+                {% if timetable_by_day[day] %}
+                    {% set has_any_class = true %}
+                {% endif %}
+            {% endfor %}
+
+            {% for day in days %}
+                <div class="timetable-day mb-4">
+                    <h4 class="day-header mb-3 pb-2 border-bottom">{{ day }}</h4>
+                    
+                    <div class="timetable-row" data-day="{{ day }}">
+                        {% if timetable_by_day[day] %}
+                            <div class="row g-3">
+                                {% for timetable, subject in timetable_by_day[day] %}
+                                    {% if loop.index == 4 %}
+                                        <div class="col-md-6 col-lg-4">
+                                            <div class="timetable-slot card h-100 bg-light">
+                                                <div class="card-body text-center">
+                                                    <h5 class="card-title">
+                                                        <span data-feather="coffee" class="me-2"></span>
+                                                        Lunch Break
+                                                    </h5>
+                                                    <p class="card-text mb-1">
+                                                        <span data-feather="clock" class="me-1"></span>
+                                                        12:30 PM - 1:30 PM
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="timetable-slot card h-100 {% if subject.type == 'Theory' %}bg-success-subtle{% else %}bg-primary-subtle{% endif %}">
+                                            <div class="card-body">
+                                                <h5 class="card-title">{{ subject.name }}</h5>
+                                                <p class="card-text mb-1">
+                                                    <span data-feather="clock" class="me-1"></span>
+                                                    {{ timetable.start_time.strftime('%I:%M %p') }} - {{ timetable.end_time.strftime('%I:%M %p') }}
+                                                </p>
+                                                <p class="card-text mb-1">
+                                                    <span data-feather="map-pin" class="me-1"></span>
+                                                    Room {{ timetable.room }}
+                                                </p>
+                                                <p class="card-text text-muted">
+                                                    <small>Code: {{ subject.code }}</small>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                {% if not has_any_class %}
+                                    No Class
+                                {% else %}
+                                    &nbsp;
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

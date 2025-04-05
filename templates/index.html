@@ -1,0 +1,130 @@
+
+
+{% extends 'layout.html' %}
+
+{% block title %}Academic Progress Hub - Home{% endblock %}
+
+{% block content %}
+<div class="row align-items-center">
+    <div class="col-lg-6">
+        <h1 class="display-4 mb-4">Welcome to Academic Progress Hub</h1>
+        <p class="lead">A comprehensive platform for tracking academic progress, managing timetables, and facilitating communication between teachers and students.</p>
+        
+        {% if error %}
+        <div class="alert alert-danger">
+            {{ error }}
+        </div>
+        {% endif %}
+        
+        <div class="mt-5">
+            {% if current_user.is_authenticated %}
+                {% if current_user.role == 'teacher' %}
+                    <a href="{{ url_for('teacher.dashboard') }}" class="btn btn-primary btn-lg me-3">
+                        <span data-feather="monitor" class="me-2"></span>
+                        Teacher Dashboard
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('student.dashboard') }}" class="btn btn-primary btn-lg me-3">
+                        <span data-feather="monitor" class="me-2"></span>
+                        Student Dashboard
+                    </a>
+                {% endif %}
+            {% else %}
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg me-3">
+                    <span data-feather="log-in" class="me-2"></span>
+                    Login
+                </a>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-outline-secondary btn-lg">
+                    <span data-feather="user-plus" class="me-2"></span>
+                    Register
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-6 mt-5 mt-lg-0">
+        <div class="card bg-dark shadow">
+            <div class="card-body p-4">
+                <h3 class="card-title mb-4">Features</h3>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start">
+                            <span data-feather="calendar" class="text-primary me-3" style="width: 24px; height: 24px;"></span>
+                            <div>
+                                <h5>Timetable Management</h5>
+                                <p class="text-muted">Create and view class schedules easily.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start">
+                            <span data-feather="bar-chart-2" class="text-success me-3" style="width: 24px; height: 24px;"></span>
+                            <div>
+                                <h5>Performance Tracking</h5>
+                                <p class="text-muted">Monitor academic progress over time.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start">
+                            <span data-feather="bell" class="text-warning me-3" style="width: 24px; height: 24px;"></span>
+                            <div>
+                                <h5>Notifications</h5>
+                                <p class="text-muted">Stay updated with important announcements.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-start">
+                            <span data-feather="users" class="text-info me-3" style="width: 24px; height: 24px;"></span>
+                            <div>
+                                <h5>Teacher-Student Portal</h5>
+                                <p class="text-muted">Dedicated interfaces for different roles.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5 pt-4">
+    <div class="col-12">
+        <div class="card bg-dark border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h3 class="text-center mb-4">How It Works</h3>
+                
+                <div class="row g-4 text-center">
+                    <div class="col-md-4">
+                        <div class="p-3">
+                            <div class="bg-secondary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                                <span data-feather="user-check" style="width: 36px; height: 36px;"></span>
+                            </div>
+                            <h4>1. Register</h4>
+                            <p class="text-muted">Create an account as a teacher or student to get started.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3">
+                            <div class="bg-secondary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                                <span data-feather="edit-3" style="width: 36px; height: 36px;"></span>
+                            </div>
+                            <h4>2. Setup Profile</h4>
+                            <p class="text-muted">Complete your profile with relevant academic information.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3">
+                            <div class="bg-secondary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                                <span data-feather="activity" style="width: 36px; height: 36px;"></span>
+                            </div>
+                            <h4>3. Track Progress</h4>
+                            <p class="text-muted">Access your personalized dashboard and start monitoring.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends 'layout.html' %}
+
+{% block title %}Complete Student Profile - Academic Progress Hub{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h2 class="text-center mb-4">Complete Your Student Profile</h2>
+    <p class="text-center mb-4">Please provide additional information to complete your profile.</p>
+    
+    <form method="POST" action="{{ url_for('auth.complete_student_profile') }}">
+        {{ form.hidden_tag() }}
+        
+        <div class="mb-3">
+            <label for="grade" class="form-label">{{ form.grade.label }}</label>
+            {{ form.grade(class="form-control", id="grade", placeholder="Enter your grade/class") }}
+            {% if form.grade.errors %}
+                <div class="text-danger mt-1">
+                    {% for error in form.grade.errors %}
+                        <small>{{ error }}</small>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="mb-4">
+            <label for="roll_number" class="form-label">{{ form.roll_number.label }}</label>
+            {{ form.roll_number(class="form-control", id="roll_number", placeholder="Enter your roll number") }}
+            {% if form.roll_number.errors %}
+                <div class="text-danger mt-1">
+                    {% for error in form.roll_number.errors %}
+                        <small>{{ error }}</small>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="d-grid">
+            {{ form.submit(class="btn btn-primary btn-lg") }}
+        </div>
+    </form>
+</div>
+{% endblock %}

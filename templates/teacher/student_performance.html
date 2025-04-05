@@ -1,0 +1,195 @@
+{% extends 'layout.html' %}
+
+{% block title %}Student Performance - Academic Progress Hub{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h1 class="mb-0">Student Performance</h1>
+        <p class="text-muted">Track and update student performance records</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Add Performance Record</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('teacher.student_performance') }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        <label for="student_id" class="form-label">{{ form.student_id.label }}</label>
+                        {% if form.student_id.choices|length > 0 %}
+                            {{ form.student_id(class="form-select", id="student_id") }}
+                        {% else %}
+                            {{ form.student_id(class="form-select", id="student_id", disabled=true) }}
+                            <small class="text-danger">No students available in your classes.</small>
+                        {% endif %}
+                        {% if form.student_id.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.student_id.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="subject_id" class="form-label">{{ form.subject_id.label }}</label>
+                        {% if form.subject_id.choices|length > 0 %}
+                            {{ form.subject_id(class="form-select", id="subject_id") }}
+                        {% else %}
+                            {{ form.subject_id(class="form-select", id="subject_id", disabled=true) }}
+                            <small class="text-danger">No subjects available. Please <a href="{{ url_for('teacher.subjects') }}">add subjects</a> first.</small>
+                        {% endif %}
+                        {% if form.subject_id.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.subject_id.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="assessment_type" class="form-label">{{ form.assessment_type.label }}</label>
+                        {{ form.assessment_type(class="form-select", id="assessment_type") }}
+                        {% if form.assessment_type.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.assessment_type.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label for="score" class="form-label">{{ form.score.label }}</label>
+                            {{ form.score(class="form-control", id="score", placeholder="e.g., 85") }}
+                            {% if form.score.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.score.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col">
+                            <label for="max_score" class="form-label">{{ form.max_score.label }}</label>
+                            {{ form.max_score(class="form-control", id="max_score", placeholder="e.g., 100") }}
+                            {% if form.max_score.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in form.max_score.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="date" class="form-label">{{ form.date.label }}</label>
+                        {{ form.date(class="form-control", id="date", type="date") }}
+                        {% if form.date.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.date.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="comments" class="form-label">{{ form.comments.label }}</label>
+                        {{ form.comments(class="form-control", id="comments", rows="3", placeholder="Optional comments about the performance") }}
+                        {% if form.comments.errors %}
+                            <div class="text-danger mt-1">
+                                {% for error in form.comments.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid">
+                        {% if form.student_id.choices|length > 0 and form.subject_id.choices|length > 0 %}
+                            {{ form.submit(class="btn btn-primary") }}
+                        {% else %}
+                            {{ form.submit(class="btn btn-primary", disabled=true) }}
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Performance Records</h5>
+            </div>
+            <div class="card-body">
+                {% if performance_records %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Subject</th>
+                                    <th>Assessment</th>
+                                    <th>Score</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for performance, student, subject in performance_records %}
+                                    <tr>
+                                        <td>{{ student.user.username }} ({{ student.roll_number }})</td>
+                                        <td>{{ subject.name }}</td>
+                                        <td>{{ performance.assessment_type|capitalize }}</td>
+                                        <td>
+                                            {% set percentage = (performance.score / performance.max_score * 100)|round(1) %}
+                                            {{ performance.score }}/{{ performance.max_score }}
+                                            ({{ percentage }}%)
+                                            
+                                            {% if percentage >= 80 %}
+                                                <span class="badge bg-success">Excellent</span>
+                                            {% elif percentage >= 60 %}
+                                                <span class="badge bg-warning">Good</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Needs Improvement</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ performance.date.strftime('%d %b %Y') }}</td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="{{ performance.comments or 'No comments' }}">
+                                                <span data-feather="message-circle" style="width: 16px; height: 16px;"></span>
+                                            </button>
+                                            <form method="POST" action="{{ url_for('teacher.delete_performance', performance_id=performance.id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Are you sure you want to delete this performance record?">
+                                                    <span data-feather="trash-2" style="width: 16px; height: 16px;"></span>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <span data-feather="activity" style="width: 48px; height: 48px;" class="text-muted mb-3"></span>
+                        <p class="mb-0">No performance records available yet.</p>
+                        <p class="text-muted">Add your first performance record to get started.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

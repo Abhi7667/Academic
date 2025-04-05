@@ -1,0 +1,147 @@
+{% extends 'layout.html' %}
+
+{% block title %}My Performance - Academic Progress Hub{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h1 class="mb-0">My Academic Performance</h1>
+        <p class="text-muted">View detailed performance records across all subjects</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6 text-center text-md-start">
+                        <h3 class="mb-0">Overall Average: {{ overall_avg }}%</h3>
+                        <p class="text-muted">Combined average across all subjects</p>
+                    </div>
+                    <div class="col-md-6 d-flex justify-content-center justify-content-md-end">
+                        <div style="width: 150px; height: 150px;" class="position-relative">
+                            <div class="position-absolute top-50 start-50 translate-middle text-center">
+                                <h3 class="mb-0">{{ overall_avg }}%</h3>
+                                
+                                {% if overall_avg >= 80 %}
+                                    <p class="mb-0 performance-high">Excellent</p>
+                                {% elif overall_avg >= 60 %}
+                                    <p class="mb-0 performance-medium">Good</p>
+                                {% else %}
+                                    <p class="mb-0 performance-low">Needs Improvement</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if performance_by_subject %}
+    <!-- Performance Chart Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Performance Overview</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="performanceChart" style="height: 300px;" 
+                        data-subjects="{{ performance_by_subject.keys()|map(attribute='name')|list|tojson }}"
+                        data-scores="{{ performance_by_subject.values()|map(attribute='average')|list|tojson }}">
+                    </canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for subject, data in performance_by_subject.items() %}
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{ subject.name }} ({{ subject.code }})</h5>
+                        <span class="badge 
+                            {% if data.average >= 80 %}
+                                bg-success
+                            {% elif data.average >= 60 %}
+                                bg-warning
+                            {% else %}
+                                bg-danger
+                            {% endif %}
+                        ">
+                            {{ data.average }}%
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Attendance</th>
+                                        <th>Date</th>
+                                        <th>Assessment</th>
+                                        <th>Score</th>
+                                        <th>Comments</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for performance in data.performances %}
+                                        <tr>
+                                            <td>{{ performance.date.strftime('%d %b %Y') }}</td>
+                                            <td>{{ performance.assessment_type|capitalize }}</td>
+                                            <td>
+                                                {% set percentage = (performance.score / performance.max_score * 100)|round(1) %}
+                                                {{ performance.score }}/{{ performance.max_score }}
+                                                
+                                                {% if percentage >= 80 %}
+                                                    <span class="badge bg-success">{{ percentage }}%</span>
+                                                {% elif percentage >= 60 %}
+                                                    <span class="badge bg-warning">{{ percentage }}%</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">{{ percentage }}%</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if performance.comments %}
+                                                    <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="{{ performance.comments }}">
+                                                        <span data-feather="message-circle" style="width: 16px; height: 16px;"></span>
+                                                    </button>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <span data-feather="bar-chart-2" style="width: 48px; height: 48px;" class="text-muted mb-3"></span>
+            <h4>No Performance Records Yet</h4>
+            <p class="text-muted">Your performance records will appear here once they are added by your teachers.</p>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const performanceChart = document.getElementById('performanceChart');
+        if (performanceChart) {
+            renderPerformanceChart(performanceChart);
+        }
+    });
+</script>
+{% endblock %}

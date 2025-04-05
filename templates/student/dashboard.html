@@ -1,0 +1,256 @@
+{% extends 'layout.html' %}
+
+{% block title %}Student Dashboard - Academic Progress Hub{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h1 class="mb-0">Student Dashboard</h1>
+        <p class="text-muted">Welcome back, {{ current_user.username }}!</p>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('notification.student_notifications') }}" class="btn btn-outline-primary">
+            <span data-feather="bell" class="me-2"></span>View All Notifications
+        </a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <span data-feather="user" class="text-primary me-3" style="width: 24px; height: 24px;"></span>
+                    <h5 class="card-title mb-0">Student Info</h5>
+                </div>
+                <p class="mb-1"><strong>Name:</strong> {{ current_user.username }}</p>
+                <p class="mb-1"><strong>Grade:</strong> {{ student.grade }}</p>
+                <p class="mb-1"><strong>Roll Number:</strong> {{ student.roll_number }}</p>
+                <p class="mb-3"><strong>Email:</strong> {{ current_user.email }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <span data-feather="activity" class="text-success me-3" style="width: 24px; height: 24px;"></span>
+                    <h5 class="card-title mb-0">Overall Performance</h5>
+                </div>
+                <div class="text-center">
+                    <h2 class="display-4 mb-0">{{ overall_performance }}%</h2>
+                    <p class="text-muted mb-3">Average across all subjects</p>
+                    
+                    {% if overall_performance >= 80 %}
+                        <div class="badge bg-success p-2">Excellent</div>
+                    {% elif overall_performance >= 60 %}
+                        <div class="badge bg-warning p-2">Good</div>
+                    {% else %}
+                        <div class="badge bg-danger p-2">Needs Improvement</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <span data-feather="calendar" class="text-warning me-3" style="width: 24px; height: 24px;"></span>
+                    <h5 class="card-title mb-0">Today's Classes</h5>
+                </div>
+                
+                {% if today_classes %}
+                    <div class="list-group list-group-flush">
+                        {% for timetable, subject in today_classes %}
+                            <div class="list-group-item px-0">
+                                <div class="d-flex justify-content-between">
+                                    <h6 class="mb-1">{{ subject.name }}</h6>
+                                    <small>Room {{ timetable.room }}</small>
+                                </div>
+                                <p class="mb-0 text-muted">
+                                    {{ timetable.start_time.strftime('%I:%M %p') }} - {{ timetable.end_time.strftime('%I:%M %p') }}
+                                </p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-3">
+                        <p class="mb-0">No classes scheduled for today.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <!-- Performance Chart -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Subject Performance</h5>
+            </div>
+            <div class="card-body">
+                {% if subjects %}
+                    <div style="position: relative; width: 100%; height: 400px;">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                    <script>
+                        const ctx = document.getElementById('performanceChart');
+                        if (ctx) {
+                            new Chart(ctx, {
+                                type: 'bar',
+                                data: {
+                                    labels: {{ subjects|tojson }},
+                                    datasets: [{
+                                        label: 'Performance (%)',
+                                        data: {{ scores|tojson }},
+                                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                                        borderColor: 'rgba(75, 192, 192, 1)',
+                                        borderWidth: 1
+                                    }]
+                                },
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: {
+                                            display: true,
+                                            position: 'top'
+                                        }
+                                    },
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            max: 100,
+                                            grid: {
+                                                display: true
+                                            },
+                                            ticks: {
+                                                callback: function(value) {
+                                                    return value + '%';
+                                                }
+                                            }
+                                        },
+                                        x: {
+                                            grid: {
+                                                display: false
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    </script>
+                {% else %}
+                    <div class="text-center py-5">
+                        <span data-feather="bar-chart-2" style="width: 48px; height: 48px;" class="text-muted mb-3"></span>
+                        <p class="mb-0">No performance data available yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Recent Performance Records -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Performance</h5>
+                <a href="{{ url_for('student.performance') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_performances %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Assessment</th>
+                                    <th>Score</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for performance, subject in recent_performances %}
+                                    <tr>
+                                        <td>{{ subject.name }}</td>
+                                        <td>{{ performance.assessment_type|capitalize }}</td>
+                                        <td>
+                                            {% set percentage = (performance.score / performance.max_score * 100)|round(1) %}
+                                            {{ performance.score }}/{{ performance.max_score }}
+                                            
+                                            {% if percentage >= 80 %}
+                                                <span class="badge bg-success">{{ percentage }}%</span>
+                                            {% elif percentage >= 60 %}
+                                                <span class="badge bg-warning">{{ percentage }}%</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">{{ percentage }}%</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ performance.date.strftime('%d %b %Y') }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <span data-feather="clipboard" style="width: 36px; height: 36px;" class="text-muted mb-3"></span>
+                        <p class="mb-0">No performance records available yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Recent Notifications -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Notifications</h5>
+                <a href="{{ url_for('notification.student_notifications') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_notifications %}
+                    <div class="list-group list-group-flush">
+                        {% for notification in recent_notifications %}
+                            <div class="notification-item list-group-item px-0">
+                                <h6 class="mb-1">{{ notification.title }}</h6>
+                                <p class="mb-1">{{ notification.message }}</p>
+                                <small class="text-muted">{{ notification.created_at.strftime('%d %b %Y, %I:%M %p') }}</small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <span data-feather="bell" style="width: 36px; height: 36px;" class="text-muted mb-3"></span>
+                        <p class="mb-0">No notifications yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Quick Links -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Links</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('student.timetable') }}" class="btn btn-outline-primary">
+                        <span data-feather="calendar" class="me-2"></span>View Full Timetable
+                    </a>
+                    <a href="{{ url_for('student.performance') }}" class="btn btn-outline-primary">
+                        <span data-feather="bar-chart-2" class="me-2"></span>Detailed Performance
+                    </a>
+                    <a href="{{ url_for('notification.student_notifications') }}" class="btn btn-outline-primary">
+                        <span data-feather="bell" class="me-2"></span>All Notifications
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

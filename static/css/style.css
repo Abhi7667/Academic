@@ -1,0 +1,199 @@
+/* Custom styles to complement Bootstrap */
+
+:root {
+    --transition-speed: 0.3s;
+}
+
+.auth-container {
+    max-width: 500px;
+    margin: 2rem auto;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    background-color: var(--bs-dark);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.notification-item {
+    border-left: 4px solid var(--bs-primary);
+    padding-left: 1rem;
+    margin-bottom: 1rem;
+    transition: background-color 0.2s ease;
+}
+
+.notification-item:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.performance-high {
+    color: var(--bs-success);
+}
+
+.performance-medium {
+    color: var(--bs-warning);
+}
+
+.performance-low {
+    color: var(--bs-danger);
+}
+
+.timetable-slot {
+    transition: transform 0.2s;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.timetable-slot:hover {
+    transform: translateY(-2px);
+}
+
+.timetable-slot.bg-light {
+    border-left: 4px solid #6c757d;
+}
+
+.timetable-slot.bg-success-subtle {
+    border-left: 4px solid #198754;
+}
+
+.timetable-slot.bg-primary-subtle {
+    border-left: 4px solid #0d6efd;
+}
+
+.timetable-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.day-header {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .timetable-slot {
+        margin-bottom: 1rem;
+    }
+    
+    .timetable-container {
+        padding: 0 1rem;
+    }
+}
+
+.theme-toggle {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: color var(--transition-speed);
+}
+
+.theme-toggle:hover {
+    color: var(--bs-primary);
+}
+
+/* Custom navbar styling */
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+/* Loading states */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    border-radius: 0.5rem;
+}
+
+.spinner {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Card and content improvements */
+.card {
+    overflow: hidden;
+    border: none; 
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: rgba(0, 0, 0, 0.05);
+    font-weight: bold;
+}
+
+/* Chart container styling */
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    transition: background-color 0.3s ease;
+}
+
+.chart-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--bs-text-muted);
+}
+
+/* Ensure smooth transitions for theme changes */
+body, .card, .chart-container {
+    transition: background-color var(--transition-speed) ease,
+                color var(--transition-speed) ease,
+                border-color var(--transition-speed) ease;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 992px) {
+    .dashboard-stats {
+        flex-direction: column;
+    }
+    
+    .timetable-container {
+        overflow-x: auto;
+    }
+    
+    .container {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+    
+    .card {
+        margin-bottom: 1.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .dashboard-card {
+        min-height: auto;
+    }
+    
+    .display-4 {
+        font-size: 2.5rem;
+    }
+    
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}

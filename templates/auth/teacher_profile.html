@@ -1,0 +1,30 @@
+{% extends 'layout.html' %}
+
+{% block title %}Complete Teacher Profile - Academic Progress Hub{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h2 class="text-center mb-4">Complete Your Teacher Profile</h2>
+    <p class="text-center mb-4">Please provide additional information to complete your profile.</p>
+    
+    <form method="POST" action="{{ url_for('auth.complete_teacher_profile') }}">
+        {{ form.hidden_tag() }}
+        
+        <div class="mb-4">
+            <label for="department" class="form-label">{{ form.department.label }}</label>
+            {{ form.department(class="form-control", id="department", placeholder="Enter your department") }}
+            {% if form.department.errors %}
+                <div class="text-danger mt-1">
+                    {% for error in form.department.errors %}
+                        <small>{{ error }}</small>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="d-grid">
+            {{ form.submit(class="btn btn-primary btn-lg") }}
+        </div>
+    </form>
+</div>
+{% endblock %}
