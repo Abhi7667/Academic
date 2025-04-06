@@ -1,0 +1,32 @@
+<!-- Partial template for timetable preview -->
+<table class="table table-bordered text-center">
+    <thead>
+        <tr>
+            <th>Time / Day</th>
+            {% for day in days %}
+                <th>{{ day }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for start_time, end_time in time_slots %}
+            <tr>
+                <th>
+                    {{ start_time.strftime('%I:%M %p') }} - {{ end_time.strftime('%I:%M %p') }}
+                </th>
+                {% for day in days %}
+                    <td>
+                        {% for entry in timetable_by_day[day] %}
+                            {% if entry.start_time == start_time %}
+                                <div class="period-slot {% if entry.subject.type == 'Theory' %}bg-success-subtle{% else %}bg-primary-subtle{% endif %} p-2 rounded">
+                                    <span class="subject-name">{{ entry.subject.name }}</span><br>
+                                    <small class="text-muted">Room: {{ entry.room }}</small>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>

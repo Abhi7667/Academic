@@ -15,7 +15,9 @@ auth = Blueprint('auth', __name__, url_prefix='/auth')
 def login():
     # Redirect if user is already logged in
     if current_user.is_authenticated:
-        if current_user.role == 'teacher':
+        if current_user.role == 'admin':
+            return redirect(url_for('admin.admin_dashboard'))
+        elif current_user.role == 'teacher':
             return redirect(url_for('teacher.dashboard'))
         else:
             return redirect(url_for('student.dashboard'))
@@ -30,7 +32,9 @@ def login():
             
             # Redirect to the appropriate dashboard based on role
             next_page = request.args.get('next')
-            if user.role == 'teacher':
+            if user.role == 'admin':
+                return redirect(next_page or url_for('admin.admin_dashboard'))
+            elif user.role == 'teacher':
                 return redirect(next_page or url_for('teacher.dashboard'))
             else:
                 return redirect(next_page or url_for('student.dashboard'))
@@ -44,7 +48,9 @@ def login():
 def register():
     # Redirect if user is already logged in
     if current_user.is_authenticated:
-        if current_user.role == 'teacher':
+        if current_user.role == 'admin':
+            return redirect(url_for('admin.admin_dashboard'))
+        elif current_user.role == 'teacher':
             return redirect(url_for('teacher.dashboard'))
         else:
             return redirect(url_for('student.dashboard'))
@@ -67,20 +73,23 @@ def register():
             if user.role == 'teacher':
                 profile = Teacher(user_id=user.id)
                 db.session.add(profile)
-            else:
+            elif user.role == 'student':
                 profile = Student(user_id=user.id)
                 db.session.add(profile)
+            # Admin users don't need an additional profile
             
             db.session.commit()
             
-            flash('Registration successful! Please complete your profile.', 'success')
+            flash('Registration successful!', 'success')
             logger.debug(f"User {user.username} registered successfully as {user.role}")
             
             # Log the user in
             login_user(user)
             
-            # Redirect to profile completion
-            if user.role == 'teacher':
+            # Redirect to profile completion or admin dashboard
+            if user.role == 'admin':
+                return redirect(url_for('admin.admin_dashboard'))
+            elif user.role == 'teacher':
                 return redirect(url_for('auth.complete_teacher_profile'))
             else:
                 return redirect(url_for('auth.complete_student_profile'))

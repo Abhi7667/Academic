@@ -10,12 +10,16 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    role = db.Column(db.String(10), nullable=False)  # 'teacher' or 'student'
+    role = db.Column(db.String(10), nullable=False)  # 'admin', 'teacher' or 'student'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
     teacher_profile = db.relationship('Teacher', backref='user', uselist=False, cascade='all, delete-orphan')
     student_profile = db.relationship('Student', backref='user', uselist=False, cascade='all, delete-orphan')
+    
+    @property
+    def is_admin(self):
+        return self.role == 'admin'
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -63,7 +67,8 @@ class Subject(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    code = db.Column(db.String(10), unique=True, nullable=False)
+    code = db.Column(db.String(20), nullable=False, unique=True)
+    type = db.Column(db.String(20), nullable=False, default='Theory')
     teacher_id = db.Column(db.Integer, db.ForeignKey('teachers.id'), nullable=False)
     
     # Relationships

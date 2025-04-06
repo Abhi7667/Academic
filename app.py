@@ -54,11 +54,13 @@ from routes.auth_routes import auth as auth_bp
 from routes.teacher_routes import teacher as teacher_bp
 from routes.student_routes import student as student_bp
 from routes.notification_routes import notification as notification_bp
+from routes.admin_routes import admin as admin_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(teacher_bp)
 app.register_blueprint(student_bp)
 app.register_blueprint(notification_bp)
+app.register_blueprint(admin_bp)
 
 # Home route
 @app.route('/')

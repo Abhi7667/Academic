@@ -1,0 +1,55 @@
+.admin-dashboard .card {
+    transition: transform 0.2s ease-in-out;
+    margin-bottom: 1rem;
+}
+
+.admin-dashboard .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.table-responsive {
+    margin-top: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border-radius: 0.25rem;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-top: none;
+}
+
+.badge {
+    padding: 0.5em 0.75em;
+}
+
+.alert {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.alert.fade {
+    opacity: 0;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.btn-group-actions {
+    white-space: nowrap;
+}
+
+.delete-user {
+    margin-left: 0.5rem;
+}
+
+.modal-content {
+    border-radius: 0.5rem;
+}
+
+.card {
+    border-radius: 0.5rem;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}

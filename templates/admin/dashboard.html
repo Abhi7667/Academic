@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Admin Dashboard</h1>
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">User Management</h5>
+                    <p class="card-text">Manage students and teachers</p>
+                    <a href="{{ url_for('admin.manage_users') }}" class="btn btn-primary">Manage Users</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Add New User</h5>
+                    <p class="card-text">Add new student or teacher</p>
+                    <a href="{{ url_for('admin.add_user') }}" class="btn btn-success">Add User</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

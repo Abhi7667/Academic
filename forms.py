@@ -14,7 +14,11 @@ class RegistrationForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
-    role = SelectField('Role', choices=[('student', 'Student'), ('teacher', 'Teacher')], validators=[DataRequired()])
+    role = SelectField('Role', choices=[
+        ('student', 'Student'), 
+        ('teacher', 'Teacher'),
+        ('admin', 'Admin')
+    ], validators=[DataRequired()])
     submit = SubmitField('Register')
     
     def validate_username(self, username):
@@ -42,6 +46,7 @@ class StudentProfileForm(FlaskForm):
 class SubjectForm(FlaskForm):
     name = StringField('Subject Name', validators=[DataRequired()])
     code = StringField('Subject Code', validators=[DataRequired()])
+    type = SelectField('Subject Type', choices=[('Theory', 'Theory'), ('Practical', 'Practical')], validators=[DataRequired()])
     submit = SubmitField('Save Subject')
 
 

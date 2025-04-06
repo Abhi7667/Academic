@@ -79,6 +79,69 @@
     font-weight: 500;
 }
 
+/* Improved background colors for timetable slots */
+.period-slot {
+    min-height: 50px;
+    padding: 5px;
+    margin: 2px;
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.period-slot .subject-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.period-slot .text-muted {
+    font-size: 0.75rem;
+}
+
+.period-slot form {
+    margin-top: 5px;
+}
+
+.period-slot select.form-select-sm {
+    max-width: 120px; /* Increased from 75px for better readability */
+    min-width: 100px;
+    font-size: 0.75rem;
+    padding: 2px 4px;
+    height: auto;
+}
+
+.period-slot .btn-sm {
+    padding: 0.15rem 0.35rem;
+    font-size: 0.75rem;
+}
+
+.period-slot.bg-success-subtle {
+    background-color: rgba(25, 135, 84, 0.2) !important;
+    border-left: 4px solid #198754;
+}
+
+.period-slot.bg-primary-subtle {
+    background-color: rgba(13, 110, 253, 0.2) !important;
+    border-left: 4px solid #0d6efd;
+}
+
+#timetableTable th {
+    font-size: 0.8rem;
+    padding: 4px;
+}
+
+#timetableTable th small {
+    font-size: 0.7rem;
+    display: block;
+    margin-top: 2px;
+}
+
+#timetableTable td {
+    padding: 4px;
+}
+
 @media (max-width: 768px) {
     .timetable-slot {
         margin-bottom: 1rem;
@@ -129,14 +192,28 @@
 
 /* Card and content improvements */
 .card {
+    background-color: var(--bs-dark);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
     overflow: hidden;
-    border: none; 
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .card-header {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     font-weight: bold;
+}
+
+.table-bordered {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.table-bordered > :not(caption) > * > * {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.bg-light {
+    background-color: rgba(108, 117, 125, 0.2) !important;
 }
 
 /* Chart container styling */

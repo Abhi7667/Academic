@@ -48,6 +48,19 @@
                             </div>
                         {% endif %}
                     </div>
+                    <div class="mb-3">
+                        {{ form.type.label(class="form-label") }}
+                        <div>
+                            {{ form.type(class="form-select") }}
+                        </div>
+                        {% if form.type.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.type.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
                     <div class="d-grid">
                         {{ form.submit(class="btn btn-primary") }}
                     </div>
@@ -67,6 +80,7 @@
                             <h5 class="card-title mb-0">{{ subject.name }}</h5>
                             <span class="badge bg-secondary">{{ subject.code }}</span>
                         </div>
+                        <p class="text-muted mb-2">{{ subject.type }}</p>
                         <div class="d-flex justify-content-between mt-3">
                             <small class="text-muted">
                                 <span data-feather="layers" class="me-1"></span>

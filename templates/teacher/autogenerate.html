@@ -1,0 +1,225 @@
+{% extends 'layout.html' %}
+
+{% block title %}Auto Generate Timetable - Academic Progress Hub{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2><i class="fas fa-magic me-2"></i>Auto Generate Timetable</h2>
+            <p class="text-muted">Configure settings and generate an optimized timetable automatically</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Generation Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form id="generateForm" method="POST" action="{{ url_for('teacher.save_timetable') }}">
+                        <div class="mb-3">
+                            <label for="grade" class="form-label">Grade/Class <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="grade" name="grade" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Working Days</label>
+                            <div class="row g-2">
+                                {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+                                <div class="col-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="working_days" 
+                                               value="{{ day }}" id="day{{ loop.index }}" 
+                                               {% if day != 'Saturday' %}checked{% endif %}>
+                                        <label class="form-check-label" for="day{{ loop.index }}">
+                                            {{ day }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="periodsPerDay" class="form-label">Periods Per Day</label>
+                            <select class="form-select" id="periodsPerDay" name="periods_per_day">
+                                <option value="6" selected>6 Periods</option>
+                                <option value="7">7 Periods</option>
+                                <option value="8">8 Periods</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="breakAfter" class="form-label">Break After Period</label>
+                            <select class="form-select" id="breakAfter" name="break_after">
+                                <option value="3" selected>3rd Period</option>
+                                <option value="4">4th Period</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="startTime" class="form-label">School Start Time</label>
+                            <input type="time" class="form-control" id="startTime" name="start_time" value="09:00">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="periodDuration" class="form-label">Period Duration (minutes)</label>
+                            <select class="form-select" id="periodDuration" name="period_duration">
+                                <option value="45">45 Minutes</option>
+                                <option value="60" selected>60 Minutes</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="breakDuration" class="form-label">Break Duration (minutes)</label>
+                            <select class="form-select" id="breakDuration" name="break_duration">
+                                <option value="30">30 Minutes</option>
+                                <option value="45">45 Minutes</option>
+                                <option value="60" selected>60 Minutes</option>
+                            </select>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="avoidConsecutive" name="avoid_consecutive" checked>
+                            <label class="form-check-label" for="avoidConsecutive">
+                                Avoid consecutive periods of same subject
+                            </label>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="balanceSubjects" name="balance_subjects" checked>
+                            <label class="form-check-label" for="balanceSubjects">
+                                Balance subjects across week
+                            </label>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-magic me-2"></i>Generate Timetable
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="previewBtn">
+                                <i class="fas fa-eye me-2"></i>Preview
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Preview</h5>
+                    <div>
+                        <button class="btn btn-success btn-sm me-2" id="saveBtn" style="display: none;">
+                            <i class="fas fa-save me-2"></i>Save Timetable
+                        </button>
+                        <button class="btn btn-primary btn-sm" id="downloadPreviewBtn" style="display: none;">
+                            <i class="fas fa-download me-2"></i>Download
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="previewArea" class="text-center py-5 text-muted">
+                        <i class="fas fa-calendar fa-3x mb-3"></i>
+                        <p>Click "Preview" to see how your timetable will look</p>
+                    </div>
+                    <div id="timetablePreview" class="table-responsive" style="display: none;">
+                        <!-- Timetable will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const generateForm = document.getElementById('generateForm');
+    const previewBtn = document.getElementById('previewBtn');
+    const previewArea = document.getElementById('previewArea');
+    const timetablePreview = document.getElementById('timetablePreview');
+    const saveBtn = document.getElementById('saveBtn');
+    const downloadPreviewBtn = document.getElementById('downloadPreviewBtn');
+
+    // Preview button click handler
+    previewBtn.addEventListener('click', async function() {
+        const formData = new FormData(generateForm);
+        try {
+            const response = await fetch('{{ url_for("teacher.preview_timetable") }}', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                const data = await response.text();
+                previewArea.style.display = 'none';
+                timetablePreview.style.display = 'block';
+                timetablePreview.innerHTML = data;
+                saveBtn.style.display = 'inline-block';
+                downloadPreviewBtn.style.display = 'inline-block';
+            } else {
+                throw new Error('Failed to generate preview');
+            }
+        } catch (error) {
+            alert('Error generating preview: ' + error.message);
+        }
+    });
+
+    // Save button click handler
+    saveBtn.addEventListener('click', async function() {
+        const formData = new FormData(generateForm);
+        try {
+            const response = await fetch('{{ url_for("teacher.save_timetable") }}', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                alert('Timetable saved successfully!');
+                window.location.href = '{{ url_for("teacher.timetable") }}';
+            } else {
+                throw new Error('Failed to save timetable');
+            }
+        } catch (error) {
+            alert('Error saving timetable: ' + error.message);
+        }
+    });
+
+    // Download preview button click handler
+    downloadPreviewBtn.addEventListener('click', function() {
+        const table = timetablePreview.querySelector('table');
+        if (!table) return;
+        
+        const style = `
+            <style>
+                table { border-collapse: collapse; width: 100%; margin: 20px; }
+                th, td { border: 1px solid #000; padding: 8px; text-align: center; }
+                .bg-success-subtle { background-color: #d1e7dd; }
+                .bg-primary-subtle { background-color: #cfe2ff; }
+                .bg-light { background-color: #f8f9fa; }
+            </style>
+        `;
+        
+        const html = `
+            <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:x='urn:schemas-microsoft-com:office:excel'>
+                <head>${style}<meta charset='utf-8'></head>
+                <body>${table.outerHTML}</body>
+            </html>
+        `;
+        
+        const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'timetable_preview.xls';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    });
+});
+</script>
+{% endblock %}

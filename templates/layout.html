@@ -20,6 +20,9 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin/style.css') }}">
+    {% endif %}
 </head>
 <body>
     <!-- Navigation Bar -->
@@ -35,7 +38,14 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     {% if current_user.is_authenticated %}
-                        {% if current_user.role == 'teacher' %}
+                        {% if current_user.role == 'admin' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('admin.admin_dashboard') }}">Admin Dashboard</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('admin.manage_users') }}">Manage Users</a>
+                            </li>
+                        {% elif current_user.role == 'teacher' %}
                             <li class="nav-item">
                                 <a class="nav-link" href="{{ url_for('teacher.dashboard') }}">Dashboard</a>
                             </li>

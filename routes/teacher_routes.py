@@ -6,6 +6,7 @@ from forms import SubjectForm, TimetableForm, PerformanceForm
 from sqlalchemy import func
 import logging
 from datetime import datetime
+from autogenerate import save_timetable as autogenerate_save_timetable, preview_timetable as autogenerate_preview_timetable
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -99,6 +100,7 @@ def subjects():
             subject = Subject(
                 name=form.name.data,
                 code=form.code.data,
+                type=form.type.data,
                 teacher_id=teacher_profile.id
             )
             db.session.add(subject)
@@ -146,8 +148,10 @@ def timetable():
     # Form for adding timetable entries
     form = TimetableForm()
     
-    # Populate subject choices
+    # Get all subjects for this teacher for dropdowns
     subjects = Subject.query.filter_by(teacher_id=teacher_profile.id).all()
+    
+    # Populate form subject choices
     form.subject_id.choices = [(s.id, f"{s.name} ({s.code})") for s in subjects]
     
     if form.validate_on_submit():
@@ -189,7 +193,12 @@ def timetable():
     # Sort by day and time
     timetable_entries.sort(key=lambda x: (days_order.get(x[0].day_of_week, 7), x[0].start_time))
     
-    return render_template('teacher/timetable.html', form=form, timetable_entries=timetable_entries)
+    return render_template(
+        'teacher/timetable.html',
+        form=form,
+        timetable_entries=timetable_entries,
+        subjects=subjects
+    )
 
 @teacher.route('/timetable/delete/<int:timetable_id>', methods=['POST'])
 @teacher_required
@@ -208,6 +217,84 @@ def delete_timetable(timetable_id):
         db.session.rollback()
         flash(f'Failed to delete timetable entry: {str(e)}', 'danger')
         logger.error(f"Timetable deletion error: {str(e)}")
+    
+    return redirect(url_for('teacher.timetable'))
+
+@teacher.route('/update_timetable', methods=['POST'])
+@teacher_required
+def update_timetable():
+    # Get teacher profile
+    teacher_profile = Teacher.query.filter_by(user_id=current_user.id).first()
+    
+    try:
+        subject_id = request.form.get('subject_id')
+        day = request.form.get('day')
+        period = int(request.form.get('period'))
+        
+        # Calculate time based on period
+        start_hour = 8 + period
+        end_hour = start_hour + 1
+        start_time = datetime.strptime(f"{start_hour}:00", "%H:%M").time()
+        end_time = datetime.strptime(f"{end_hour}:00", "%H:%M").time()
+        
+        # Check if an entry already exists for this slot
+        existing_entry = Timetable.query.filter_by(
+            teacher_id=teacher_profile.id,
+            day_of_week=day,
+            start_time=start_time
+        ).first()
+        
+        if existing_entry:
+            # Update existing entry
+            existing_entry.subject_id = subject_id
+            flash('Timetable updated successfully!', 'success')
+        else:
+            # Create new entry
+            subject = Subject.query.get(subject_id)
+            timetable_entry = Timetable(
+                day_of_week=day,
+                start_time=start_time,
+                end_time=end_time,
+                room=subject.room if hasattr(subject, 'room') else 'TBD',
+                teacher_id=teacher_profile.id,
+                subject_id=subject_id,
+                grade=subject.grade if hasattr(subject, 'grade') else 'TBD'
+            )
+            db.session.add(timetable_entry)
+            flash('New timetable entry added successfully!', 'success')
+        
+        db.session.commit()
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Failed to update timetable: {str(e)}', 'danger')
+        logger.error(f"Timetable update error: {str(e)}")
+    
+    return redirect(url_for('teacher.timetable'))
+
+@teacher.route('/timetable/autogenerate', methods=['GET'])
+@teacher_required
+def timetable_generator():
+    return render_template('teacher/autogenerate.html')
+
+@teacher.route('/timetable/preview', methods=['POST'])
+@teacher_required
+def preview_timetable():
+    # Get teacher profile
+    teacher_profile = Teacher.query.filter_by(user_id=current_user.id).first()
+    return autogenerate_preview_timetable(teacher_profile.id, request.form)
+
+@teacher.route('/timetable/save', methods=['POST'])
+@teacher_required
+def save_timetable():
+    # Get teacher profile
+    teacher_profile = Teacher.query.filter_by(user_id=current_user.id).first()
+    
+    success, message = autogenerate_save_timetable(teacher_profile.id, request.form)
+    if success:
+        flash(message, 'success')
+    else:
+        flash(message, 'danger')
     
     return redirect(url_for('teacher.timetable'))
 

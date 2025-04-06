@@ -23,27 +23,18 @@
                                     <th>{{ day }}</th>
                                     {% for period in range(1, 7) %}
                                         <td class="align-middle">
-                                            {% set found = false %}
-                                            {% for timetable, subject in timetable_entries %}
-                                                {% if timetable.day_of_week == day %}
-                                                    {% set start_period = (timetable.start_time.hour - 8) %}
-                                                    {% if start_period == period %}
-                                                        {% set found = true %}
-                                                        <div class="{% if subject.type == 'Theory' %}bg-success{% else %}bg-primary{% endif %} text-white p-2 rounded">
-                                                            <span class="subject-name">{{ subject.name }}</span><br>
-                                                            <span class="teacher-name">{{ subject.teacher_name }}</span>
-                                                            <div class="details d-none">
-                                                                ({{ subject.code }})<br>
-                                                                Grade: {{ timetable.grade }}<br>
-                                                                Room: {{ timetable.room }}
-                                                            </div>
-                                                        </div>
-                                                    {% endif %}
-                                                {% endif %}
-                                            {% endfor %}
-                                            {% if not found %}
-                                                <span class="text-muted">No Class</span>
-                                            {% endif %}
+                                            <form method="POST" action="{{ url_for('teacher.update_timetable') }}">
+                                                {{ form.hidden_tag() }}
+                                                <input type="hidden" name="day" value="{{ day }}">
+                                                <input type="hidden" name="period" value="{{ period }}">
+                                                <select name="subject_id" class="form-select">
+                                                    <option value="" disabled selected>Select Subject</option>
+                                                    {% for subject in subjects %}
+                                                        <option value="{{ subject.id }}">{{ subject.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <button type="submit" class="btn btn-primary mt-2">Save</button>
+                                            </form>
                                         </td>
                                         {% if period == 3 %}
                                             <td class="bg-light align-middle">RECESS</td>
