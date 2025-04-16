@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from extensions import db
-from models import Student, Performance, Subject, Timetable, Notification
+from models import Student, Performance, Subject, Timetable, Notification, Teacher, User
 from sqlalchemy import func
 import logging
 from datetime import datetime
@@ -67,18 +67,46 @@ def dashboard():
     
     overall_performance = round(overall_performance, 2)
     
+    # Get available grades
+    available_grades = db.session.query(Timetable.grade).distinct().order_by(Timetable.grade).all()
+    available_grades = [grade[0] for grade in available_grades]
+    
+    # Get selected grade from request or default to student's grade
+    selected_grade = request.args.get('grade', student_profile.grade)
+    
+    # Verify the selected grade exists in available grades
+    if selected_grade not in available_grades and available_grades:
+        selected_grade = available_grades[0]
+    
     # Get today's classes
     today = datetime.now().strftime("%A")
+    
+    # Query today's classes with teacher information
     today_classes = db.session.query(
-        Timetable, Subject
+        Timetable, Subject, Teacher, User
     ).join(
         Subject, Timetable.subject_id == Subject.id
+    ).join(
+        Teacher, Timetable.teacher_id == Teacher.id
+    ).join(
+        User, Teacher.user_id == User.id
     ).filter(
-        Timetable.grade == student_profile.grade,
+        Timetable.grade == selected_grade,
         Timetable.day_of_week == today
     ).order_by(
         Timetable.start_time
     ).all()
+    
+    # Format classes like timetable page
+    formatted_classes = []
+    for entry in today_classes:
+        timetable, subject, teacher, teacher_user = entry
+        formatted_classes.append({
+            'timetable': timetable,
+            'subject': subject,
+            'teacher': teacher,
+            'teacher_user': teacher_user
+        })
     
     # Get recent notifications for this student's grade
     recent_notifications = Notification.query.filter(
@@ -96,9 +124,11 @@ def dashboard():
         scores=scores,
         recent_performances=recent_performances,
         overall_performance=overall_performance,
-        today_classes=today_classes,
+        today_classes=formatted_classes,
         today=today,
-        recent_notifications=recent_notifications
+        recent_notifications=recent_notifications,
+        available_grades=available_grades,
+        selected_grade=selected_grade
     )
 
 @student.route('/timetable')
@@ -111,18 +141,34 @@ def timetable():
         flash('Student profile not found. Please complete your profile.', 'warning')
         return redirect(url_for('auth.complete_student_profile'))
     
-    # Get timetable for student's grade
+    # Get available grades
+    available_grades = db.session.query(Timetable.grade).distinct().order_by(Timetable.grade).all()
+    available_grades = [grade[0] for grade in available_grades]
+    
+    # Get selected grade from request or default to student's grade
+    selected_grade = request.args.get('grade', student_profile.grade)
+    
+    # Verify the selected grade exists in available grades
+    if selected_grade not in available_grades and available_grades:
+        selected_grade = available_grades[0]
+    
+    # Get timetable for selected grade
     days_order = {
         'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 
         'Thursday': 4, 'Friday': 5, 'Saturday': 6
     }
     
+    # Query timetable entries with subject and teacher information
     timetable_entries = db.session.query(
-        Timetable, Subject
+        Timetable, Subject, Teacher, User
     ).join(
         Subject, Timetable.subject_id == Subject.id
+    ).join(
+        Teacher, Timetable.teacher_id == Teacher.id
+    ).join(
+        User, Teacher.user_id == User.id
     ).filter(
-        Timetable.grade == student_profile.grade
+        Timetable.grade == selected_grade
     ).all()
     
     # Sort by day and time
@@ -133,13 +179,22 @@ def timetable():
     for day in days_order.keys():
         timetable_by_day[day] = []
     
-    for entry, subject in timetable_entries:
-        timetable_by_day[entry.day_of_week].append((entry, subject))
+    for entry in timetable_entries:
+        timetable, subject, teacher, teacher_user = entry
+        # Create a custom object with all data needed in template
+        timetable_by_day[timetable.day_of_week].append({
+            'timetable': timetable,
+            'subject': subject,
+            'teacher': teacher,
+            'teacher_user': teacher_user
+        })
     
     return render_template(
         'student/timetable.html',
         timetable_by_day=timetable_by_day,
-        days=list(days_order.keys())
+        days=list(days_order.keys()),
+        available_grades=available_grades,
+        selected_grade=selected_grade
     )
 
 @student.route('/performance')

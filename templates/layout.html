@@ -23,8 +23,11 @@
     {% if current_user.is_authenticated and current_user.role == 'admin' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin/style.css') }}">
     {% endif %}
+    {% if current_user.is_authenticated and current_user.role == 'student' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/student.css') }}">
+    {% endif %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
     <!-- Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">

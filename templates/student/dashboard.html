@@ -2,6 +2,8 @@
 
 {% block title %}Student Dashboard - Academic Progress Hub{% endblock %}
 
+{% block body_class %}student-theme{% endblock %}
+
 {% block content %}
 <div class="row mb-4 align-items-center">
     <div class="col">
@@ -24,8 +26,16 @@
                     <h5 class="card-title mb-0">Student Info</h5>
                 </div>
                 <p class="mb-1"><strong>Name:</strong> {{ current_user.username }}</p>
-                <p class="mb-1"><strong>Grade:</strong> {{ student.grade }}</p>
-                <p class="mb-1"><strong>Roll Number:</strong> {{ student.roll_number }}</p>
+                {% if student.grade is none %}
+                    <p class="mb-1"><strong>Grade:</strong> <a href="{{ url_for('auth.complete_student_profile') }}" class="link-secondary">Update Profile</a></p>
+                {% else %}
+                    <p class="mb-1"><strong>Grade:</strong> {{ student.grade }}</p>
+                {% endif %}
+                {% if student.roll_number is none %}
+                    <p class="mb-1"><strong>Roll Number:</strong> <a href="{{ url_for('auth.complete_student_profile') }}" class="link-secondary">Update Profile</a></p>
+                {% else %}
+                    <p class="mb-1"><strong>Roll Number:</strong> {{ student.roll_number }}</p>
+                {% endif %}
                 <p class="mb-3"><strong>Email:</strong> {{ current_user.email }}</p>
             </div>
         </div>
@@ -62,23 +72,47 @@
                     <h5 class="card-title mb-0">Today's Classes</h5>
                 </div>
                 
+                <div class="mb-3">
+                    <form method="GET" action="{{ url_for('student.dashboard') }}" class="row g-2 align-items-center">
+                        <div class="col">
+                            <select class="form-select form-select-sm" id="classSectionSelect" name="grade">
+                                <option value="">My Grade ({{ student.grade }})</option>
+                                {% for grade in available_grades %}
+                                    <option value="{{ grade }}" {% if grade == selected_grade and selected_grade != student.grade %}selected{% endif %}>{{ grade }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">View</button>
+                        </div>
+                    </form>
+                </div>
+                
                 {% if today_classes %}
-                    <div class="list-group list-group-flush">
-                        {% for timetable, subject in today_classes %}
-                            <div class="list-group-item px-0">
-                                <div class="d-flex justify-content-between">
-                                    <h6 class="mb-1">{{ subject.name }}</h6>
-                                    <small>Room {{ timetable.room }}</small>
+                    <div class="today-classes">
+                        {% for entry in today_classes %}
+                            <div class="timetable-slot card mb-2 {% if entry.subject.type == 'Theory' %}bg-success-subtle{% else %}bg-primary-subtle{% endif %}">
+                                <div class="card-body p-2">
+                                    <h6 class="card-title mb-1">{{ entry.subject.name }}</h6>
+                                    <p class="card-text mb-1 small">
+                                        <span data-feather="clock" class="me-1" style="width: 14px; height: 14px;"></span>
+                                        {{ entry.timetable.start_time.strftime('%I:%M %p') }} - {{ entry.timetable.end_time.strftime('%I:%M %p') }}
+                                    </p>
+                                    <p class="card-text mb-1 small">
+                                        <span data-feather="map-pin" class="me-1" style="width: 14px; height: 14px;"></span>
+                                        Room {{ entry.timetable.room }}
+                                    </p>
+                                    <p class="card-text text-muted d-flex justify-content-between">
+                                        <small>{{ entry.subject.code }}</small>
+                                        <small>{{ entry.teacher_user.username }}</small>
+                                    </p>
                                 </div>
-                                <p class="mb-0 text-muted">
-                                    {{ timetable.start_time.strftime('%I:%M %p') }} - {{ timetable.end_time.strftime('%I:%M %p') }}
-                                </p>
                             </div>
                         {% endfor %}
                     </div>
                 {% else %}
                     <div class="text-center py-3">
-                        <p class="mb-0">No classes scheduled for today.</p>
+                        <p class="mb-0">No classes scheduled for today{% if selected_grade and selected_grade != student.grade %} in {{ selected_grade }}{% endif %}.</p>
                     </div>
                 {% endif %}
             </div>
@@ -99,51 +133,53 @@
                         <canvas id="performanceChart"></canvas>
                     </div>
                     <script>
-                        const ctx = document.getElementById('performanceChart');
-                        if (ctx) {
-                            new Chart(ctx, {
-                                type: 'bar',
-                                data: {
-                                    labels: {{ subjects|tojson }},
-                                    datasets: [{
-                                        label: 'Performance (%)',
-                                        data: {{ scores|tojson }},
-                                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                                        borderColor: 'rgba(75, 192, 192, 1)',
-                                        borderWidth: 1
-                                    }]
-                                },
-                                options: {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    plugins: {
-                                        legend: {
-                                            display: true,
-                                            position: 'top'
-                                        }
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const ctx = document.getElementById('performanceChart');
+                            if (ctx) {
+                                new Chart(ctx, {
+                                    type: 'bar',
+                                    data: {
+                                        labels: JSON.parse('{{ subjects|tojson|safe }}'),
+                                        datasets: [{
+                                            label: 'Performance (%)',
+                                            data: JSON.parse('{{ scores|tojson|safe }}'),
+                                            backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                                            borderColor: 'rgba(75, 192, 192, 1)',
+                                            borderWidth: 1
+                                        }]
                                     },
-                                    scales: {
-                                        y: {
-                                            beginAtZero: true,
-                                            max: 100,
-                                            grid: {
-                                                display: true
-                                            },
-                                            ticks: {
-                                                callback: function(value) {
-                                                    return value + '%';
-                                                }
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            legend: {
+                                                display: true,
+                                                position: 'top'
                                             }
                                         },
-                                        x: {
-                                            grid: {
-                                                display: false
+                                        scales: {
+                                            y: {
+                                                beginAtZero: true,
+                                                max: 100,
+                                                grid: {
+                                                    display: true
+                                                },
+                                                ticks: {
+                                                    callback: function(value) {
+                                                        return value + '%';
+                                                    }
+                                                }
+                                            },
+                                            x: {
+                                                grid: {
+                                                    display: false
+                                                }
                                             }
                                         }
                                     }
-                                }
-                            });
-                        }
+                                });
+                            }
+                        });
                     </script>
                 {% else %}
                     <div class="text-center py-5">

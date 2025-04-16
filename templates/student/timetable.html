@@ -2,23 +2,50 @@
 
 {% block title %}My Timetable - Academic Progress Hub{% endblock %}
 
+{% block body_class %}student-theme{% endblock %}
+
 {% block content %}
 <div class="row mb-4 align-items-center">
     <div class="col">
         <h1 class="mb-0">My Timetable</h1>
-        <p class="text-muted">View your weekly class schedule</p>
-    </div>
-    <div class="col-auto">
-        <select id="timetableFilter" class="form-select">
-            <option value="all">All Days</option>
-            {% for day in days %}
-                <option value="{{ day }}">{{ day }}</option>
-            {% endfor %}
-        </select>
+        <p class="text-muted">View your class schedule by section</p>
     </div>
 </div>
 
+<!-- Grade/Section Selection -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('student.timetable') }}" class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <label for="gradeSelect" class="form-label">Select Section/Grade:</label>
+                <select class="form-select" id="gradeSelect" name="grade">
+                    <option value="">-- Select Grade --</option>
+                    {% for grade in available_grades %}
+                        <option value="{{ grade }}" {% if grade == selected_grade %}selected{% endif %}>{{ grade }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="timetableFilter" class="form-label">Filter by Day:</label>
+                <select id="timetableFilter" class="form-select">
+                    <option value="all">All Days</option>
+                    {% for day in days %}
+                        <option value="{{ day }}">{{ day }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">Load Timetable</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if selected_grade %}
 <div class="card">
+    <div class="card-header bg-light">
+        <h3 class="mb-0">Timetable for Grade: {{ selected_grade }}</h3>
+    </div>
     <div class="card-body">
         <div class="timetable-container">
             {% set has_any_class = false %}
@@ -35,7 +62,7 @@
                     <div class="timetable-row" data-day="{{ day }}">
                         {% if timetable_by_day[day] %}
                             <div class="row g-3">
-                                {% for timetable, subject in timetable_by_day[day] %}
+                                {% for entry in timetable_by_day[day] %}
                                     {% if loop.index == 4 %}
                                         <div class="col-md-6 col-lg-4">
                                             <div class="timetable-slot card h-100 bg-light">
@@ -53,19 +80,22 @@
                                         </div>
                                     {% endif %}
                                     <div class="col-md-6 col-lg-4">
-                                        <div class="timetable-slot card h-100 {% if subject.type == 'Theory' %}bg-success-subtle{% else %}bg-primary-subtle{% endif %}">
+                                        <div class="timetable-slot card h-100 {% if entry.subject.type == 'Theory' %}bg-success-subtle{% else %}bg-primary-subtle{% endif %}">
                                             <div class="card-body">
-                                                <h5 class="card-title">{{ subject.name }}</h5>
+                                                <h5 class="card-title">{{ entry.subject.name }}</h5>
                                                 <p class="card-text mb-1">
                                                     <span data-feather="clock" class="me-1"></span>
-                                                    {{ timetable.start_time.strftime('%I:%M %p') }} - {{ timetable.end_time.strftime('%I:%M %p') }}
+                                                    {{ entry.timetable.start_time.strftime('%I:%M %p') }} - {{ entry.timetable.end_time.strftime('%I:%M %p') }}
                                                 </p>
                                                 <p class="card-text mb-1">
                                                     <span data-feather="map-pin" class="me-1"></span>
-                                                    Room {{ timetable.room }}
+                                                    Room {{ entry.timetable.room }}
                                                 </p>
                                                 <p class="card-text text-muted">
-                                                    <small>Code: {{ subject.code }}</small>
+                                                    <small>Code: {{ entry.subject.code }}</small>
+                                                </p>
+                                                <p class="card-text text-muted">
+                                                    <small>Teacher: {{ entry.teacher_user.username }}</small>
                                                 </p>
                                             </div>
                                         </div>
@@ -87,4 +117,36 @@
         </div>
     </div>
 </div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <div class="alert alert-info" role="alert">
+            Please select a section/grade to view the timetable.
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const filter = document.getElementById('timetableFilter');
+        
+        filter.addEventListener('change', function() {
+            const selectedDay = this.value;
+            const days = document.querySelectorAll('.timetable-day');
+            
+            days.forEach(day => {
+                const dayName = day.querySelector('.day-header').textContent.trim();
+                if (selectedDay === 'all' || dayName === selectedDay) {
+                    day.style.display = 'block';
+                } else {
+                    day.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}
