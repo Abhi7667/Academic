@@ -1,0 +1,166 @@
+{% extends 'layout.html' %}
+
+{% block title %}Faculty Timetable - Admin{% endblock %}
+
+{% block content %}
+<style>
+    /* Reusing styles from schedule_periods.html for consistency */
+    body {
+        background-color: #0a1929; /* Dark background for the whole page */
+        color: #e0e0e0; /* Light text color */
+    }
+    .container {
+        background-color: #0a1929;
+    }
+    h1, h3, label {
+        color: #ccd6f6;
+    }
+    .form-select, .btn-primary {
+        background-color: #112240; /* Darker element background */
+        color: #ccd6f6;
+        border: 1px solid #0a7bec;
+    }
+    .form-select {
+        appearance: none; /* Optional: for custom dropdown arrow */
+    }
+    .btn-primary:hover {
+        background-color: #1a365d;
+        border-color: #64ffda;
+    }
+    .table-responsive {
+        border: 1px solid #0a7bec; /* Border around the table */
+    }
+    .timetable-grid th, .timetable-grid td {
+        border: 1px solid #0a7bec; /* Blue borders */
+        text-align: center;
+        vertical-align: middle;
+        min-width: 120px;
+        height: 80px;
+        position: relative;
+        background-color: #112240; /* Dark cell background */
+        color: #ccd6f6; /* Light text in cells */
+    }
+    .timetable-grid th {
+        background-color: #022343; /* Slightly different header background */
+        color: #64ffda; /* Accent color for headers */
+    }
+    .timetable-grid .day-header {
+        font-weight: bold;
+        background-color: #011931; /* Darker day header */
+        width: 100px;
+        color: #64ffda;
+    }
+    .timetable-grid .recess {
+        background-color: #021b34; /* Dark recess background */
+        font-weight: bold;
+        color: #64ffda;
+        text-align: center;
+        min-width: 80px; /* Make break column narrower */
+    }
+    .subject-info {
+        font-size: 0.9em;
+        color: #8892b0; /* Muted color for subject info */
+    }
+    .subject-code {
+        font-weight: bold;
+        color: #ccd6f6; /* Brighter color for subject code */
+    }
+    .grade-info {
+        font-size: 0.8em;
+        color: #8892b0;
+    }
+    .period-header {
+        font-weight: bold;
+    }
+     .text-muted {
+        color: #8892b0 !important; /* Ensure muted text is visible */
+    }
+    .alert-info {
+        background-color: #112240;
+        color: #ccd6f6;
+        border-color: #0a7bec;
+    }
+</style>
+
+<div class="container mt-4">
+    <h1 class="mb-4">Faculty Timetable</h1>
+
+    <!-- Teacher Selection -->
+    <form method="GET" action="{{ url_for('admin.view_timetable_faculty') }}" class="row g-3 align-items-center mb-4">
+        <div class="col-auto">
+            <label for="teacherSelect" class="col-form-label">Select Faculty:</label>
+        </div>
+        <div class="col-auto">
+            <select class="form-select" id="teacherSelect" name="teacher_id">
+                <option value="">-- Select Teacher --</option>
+                {% for teacher in teachers %}
+                    <option value="{{ teacher.id }}" {% if teacher.id|string == selected_teacher_id %}selected{% endif %}>
+                        {{ teacher.user.username }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Load Timetable</button>
+        </div>
+    </form>
+
+    {% if selected_teacher %}
+        <h3 class="mb-3">Timetable for: {{ selected_teacher.user.username }}</h3>
+        <div class="table-responsive">
+            <table class="table table-bordered timetable-grid">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th class="period-header">Period 1<br><small>(9-10 AM)</small></th>
+                        <th class="period-header">Period 2<br><small>(10-11 AM)</small></th>
+                        <th class="period-header">Period 3<br><small>(11-12 PM)</small></th>
+                        <th class="period-header">BREAK<br><small>(12-1 PM)</small></th>
+                        <th class="period-header">Period 4<br><small>(1-2 PM)</small></th>
+                        <th class="period-header">Period 5<br><small>(2-3 PM)</small></th>
+                        <th class="period-header">Period 6<br><small>(3-4 PM)</small></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+                    {% set periods = range(1, 7) %}
+                    {% for day in days %}
+                        <tr>
+                            <th class="day-header">{{ day }}</th>
+                            {% for period in periods %}
+                                {% set entry = timetable_data.get(day, {}).get(period) %}
+                                <td>
+                                    {% if entry %}
+                                        <div class="subject-info">
+                                            <span class="subject-code">{{ entry.subject.code }}</span><br>
+                                            <span class="grade-info">Grade: {{ entry.grade }}</span>
+                                            {# Maybe add room if available: entry.room #}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                {% if period == 3 %} {# Insert break column after period 3 #}
+                                    <td class="recess">BREAK</td>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            Please select a faculty member to view their timetable.
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }} {# Include scripts from layout.html if any #}
+<script>
+    // Add any specific JavaScript for this page if needed
+</script>
+{% endblock %} 

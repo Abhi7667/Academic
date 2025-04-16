@@ -1,8 +1,12 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from extensions import db
-from models import User, Teacher, Student
+from models import User, Teacher, Student, Subject, Timetable
+from flask_wtf import FlaskForm
+from wtforms import StringField, SelectField, SubmitField
+from wtforms.validators import DataRequired
 import logging
+from datetime import time
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -157,3 +161,318 @@ def delete_user(user_id):
         logger.error(f"User deletion error: {str(e)}")
     
     return redirect(url_for('admin.manage_users'))
+
+# Placeholder routes for new dashboard features
+@admin.route('/subjects', methods=['GET', 'POST'])
+@admin_required
+def manage_subjects():
+    # Create form for adding new subjects
+    class SubjectForm(FlaskForm):
+        name = StringField('Subject Name', validators=[DataRequired()])
+        code = StringField('Subject Code', validators=[DataRequired()])
+        type = SelectField('Subject Type', choices=[
+            ('Theory', 'Theory'), 
+            ('Practical', 'Practical'),
+            ('Laboratory', 'Laboratory')
+        ], validators=[DataRequired()])
+        teacher_id = SelectField('Assign Teacher', coerce=int, validators=[DataRequired()])
+        submit = SubmitField('Add Subject')
+    
+    # Get all teachers for the dropdown
+    teachers = Teacher.query.join(User).filter(User.role == 'teacher').all()
+    teacher_choices = [(teacher.id, teacher.user.username) for teacher in teachers]
+    
+    form = SubjectForm()
+    form.teacher_id.choices = teacher_choices
+    
+    # Handle form submission
+    if form.validate_on_submit():
+        try:
+            subject = Subject(
+                name=form.name.data,
+                code=form.code.data,
+                type=form.type.data,
+                teacher_id=form.teacher_id.data
+            )
+            db.session.add(subject)
+            db.session.commit()
+            
+            flash('Subject added successfully!', 'success')
+            return redirect(url_for('admin.manage_subjects'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Failed to add subject: {str(e)}', 'danger')
+            logger.error(f"Subject creation error: {str(e)}")
+    
+    # Get all subjects
+    subjects = Subject.query.all()
+    
+    return render_template('admin/subjects.html', form=form, subjects=subjects)
+
+@admin.route('/subjects/delete/<int:subject_id>', methods=['POST'])
+@admin_required
+def delete_subject(subject_id):
+    # Get subject
+    subject = Subject.query.get_or_404(subject_id)
+    
+    try:
+        db.session.delete(subject)
+        db.session.commit()
+        flash('Subject deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Failed to delete subject: {str(e)}', 'danger')
+        logger.error(f"Subject deletion error: {str(e)}")
+    
+    return redirect(url_for('admin.manage_subjects'))
+
+@admin.route('/faculties')
+@admin_required
+def manage_faculties():
+    # Query for users with the 'teacher' role
+    faculties = User.query.filter_by(role='teacher').all()
+    return render_template('admin/users.html', users=faculties, title="Manage Faculties")
+
+@admin.route('/students')
+@admin_required
+def manage_students():
+    # Query for users with the 'student' role
+    students = User.query.filter_by(role='student').all()
+    return render_template('admin/users.html', users=students, title="Manage Students")
+
+@admin.route('/schedule', methods=['GET'])
+@admin_required
+def schedule_periods():
+    selected_grade = request.args.get('grade')
+    
+    # Get distinct grades from Student table or Timetable table (or a predefined list)
+    # Option 1: From Student table
+    grades_query = db.session.query(Student.grade).distinct().filter(Student.grade.isnot(None))
+    available_grades = sorted([g[0] for g in grades_query.all()])
+
+    # Get all subjects with their teachers for the dropdowns
+    available_subjects = Subject.query.options(db.joinedload(Subject.teacher).joinedload(Teacher.user)).order_by(Subject.code).all()
+    
+    timetable_data = {}
+    if selected_grade:
+        # Fetch timetable entries for the selected grade
+        entries = Timetable.query.filter_by(grade=selected_grade)\
+                               .options(db.joinedload(Timetable.subject), db.joinedload(Timetable.teacher).joinedload(Teacher.user))\
+                               .all()
+        
+        # Organize data for the template: {day: {period: entry}}
+        days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        period_times = {
+            1: (time(9, 0), time(10, 0)),
+            2: (time(10, 0), time(11, 0)),
+            3: (time(11, 0), time(12, 0)),
+            # Break/Lunch (12-1 PM) - not scheduled
+            4: (time(13, 0), time(14, 0)),
+            5: (time(14, 0), time(15, 0)),
+            6: (time(15, 0), time(16, 0)),
+        }
+
+        for day in days_order:
+            timetable_data[day] = {}
+            
+        for entry in entries:
+            for period, (start, end) in period_times.items():
+                if entry.start_time == start:
+                    timetable_data[entry.day_of_week][period] = entry
+                    break # Found the period for this entry
+
+    return render_template(
+        'admin/schedule_periods.html',
+        available_grades=available_grades,
+        selected_grade=selected_grade,
+        timetable_data=timetable_data,
+        available_subjects=available_subjects
+    )
+
+@admin.route('/schedule/update', methods=['POST'])
+@admin_required
+def update_schedule():
+    grade = request.form.get('grade')
+    day = request.form.get('day')
+    period_str = request.form.get('period')
+    subject_id_str = request.form.get('subject_id')
+
+    if not all([grade, day, period_str, subject_id_str]):
+        flash('Missing data for timetable update.', 'danger')
+        return redirect(url_for('admin.schedule_periods', grade=grade))
+
+    try:
+        period = int(period_str)
+        # Define period start/end times (should match the display)
+        period_times = {
+            1: (time(9, 0), time(10, 0)),
+            2: (time(10, 0), time(11, 0)),
+            3: (time(11, 0), time(12, 0)),
+            # Break/Lunch (12-1 PM) - not scheduled 
+            4: (time(13, 0), time(14, 0)),
+            5: (time(14, 0), time(15, 0)),
+            6: (time(15, 0), time(16, 0)),
+        }
+        start_time, end_time = period_times.get(period)
+        
+        if not start_time:
+             raise ValueError("Invalid period number.")
+
+        # Check if removing the subject
+        if subject_id_str.lower() == 'remove':
+            # Find and delete existing entry
+            existing_entry = Timetable.query.filter_by(
+                grade=grade, day_of_week=day, start_time=start_time
+            ).first()
+            if existing_entry:
+                db.session.delete(existing_entry)
+                db.session.commit()
+                flash(f'Period {period} on {day} cleared for grade {grade}.', 'info')
+            else:
+                 flash(f'No entry found to remove for Period {period} on {day} for grade {grade}.', 'warning')
+            return redirect(url_for('admin.schedule_periods', grade=grade))
+
+        # Adding or updating a subject
+        subject_id = int(subject_id_str)
+        subject = Subject.query.get(subject_id)
+        if not subject:
+            raise ValueError("Invalid Subject ID.")
+            
+        # Find existing entry for this slot
+        existing_entry = Timetable.query.filter_by(
+            grade=grade, day_of_week=day, start_time=start_time
+        ).first()
+        
+        if existing_entry:
+            # Update existing entry
+            existing_entry.subject_id = subject.id
+            existing_entry.teacher_id = subject.teacher_id
+            flash(f'Timetable updated for Grade {grade}, {day}, Period {period}.', 'success')
+        else:
+            # Create new entry
+            new_entry = Timetable(
+                day_of_week=day,
+                start_time=start_time,
+                end_time=end_time,
+                grade=grade,
+                subject_id=subject.id,
+                teacher_id=subject.teacher_id,
+                room='TBD' # Or fetch room info if available
+            )
+            db.session.add(new_entry)
+            flash(f'Period scheduled for Grade {grade}, {day}, Period {period}.', 'success')
+            
+        db.session.commit()
+
+    except ValueError as ve:
+         db.session.rollback()
+         flash(f'Invalid input: {str(ve)}', 'danger')
+         logger.error(f"Timetable update ValueError: {str(ve)} - Data: {request.form}")
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating timetable: {str(e)}', 'danger')
+        logger.error(f"Timetable update error: {str(e)}")
+
+    return redirect(url_for('admin.schedule_periods', grade=grade))
+
+@admin.route('/timetable/section', methods=['GET'])
+@admin_required
+def view_timetable_section():
+    selected_grade = request.args.get('grade')
+    
+    # Get distinct available grades
+    grades_query = db.session.query(Student.grade).distinct().filter(Student.grade.isnot(None))
+    available_grades = sorted([g[0] for g in grades_query.all()])
+    
+    timetable_data = {}
+    if selected_grade:
+        # Fetch timetable entries for the selected grade
+        entries = Timetable.query.filter_by(grade=selected_grade)\
+                               .options(db.joinedload(Timetable.subject), db.joinedload(Timetable.teacher).joinedload(Teacher.user))\
+                               .all()
+        
+        # Organize data for the template: {day: {period: entry}}
+        days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        period_times = {
+            1: (time(9, 0), time(10, 0)),
+            2: (time(10, 0), time(11, 0)),
+            3: (time(11, 0), time(12, 0)),
+            4: (time(13, 0), time(14, 0)),
+            5: (time(14, 0), time(15, 0)),
+            6: (time(15, 0), time(16, 0)),
+        }
+
+        for day in days_order:
+            timetable_data[day] = {}
+            
+        for entry in entries:
+            for period, (start, end) in period_times.items():
+                if entry.start_time == start:
+                    timetable_data[entry.day_of_week][period] = entry
+                    break # Found the period for this entry
+
+    return render_template(
+        'admin/timetable_section.html',
+        available_grades=available_grades,
+        selected_grade=selected_grade,
+        timetable_data=timetable_data
+    )
+
+@admin.route('/timetable/faculty', methods=['GET'])
+@admin_required
+def view_timetable_faculty():
+    selected_teacher_id = request.args.get('teacher_id')
+    
+    # Get all teachers for the dropdown
+    teachers = Teacher.query.join(User).filter(User.role == 'teacher').order_by(User.username).all()
+    
+    timetable_data = {}
+    selected_teacher = None
+    
+    if selected_teacher_id:
+        try:
+            teacher_id = int(selected_teacher_id)
+            selected_teacher = Teacher.query.get(teacher_id)
+            
+            if selected_teacher:
+                # Fetch timetable entries for the selected teacher
+                entries = Timetable.query.filter_by(teacher_id=teacher_id)\
+                                       .options(db.joinedload(Timetable.subject))\
+                                       .all()
+                
+                # Organize data for the template: {day: {period: entry}}
+                days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+                period_times = {
+                    1: (time(9, 0), time(10, 0)),
+                    2: (time(10, 0), time(11, 0)),
+                    3: (time(11, 0), time(12, 0)),
+                    4: (time(13, 0), time(14, 0)),
+                    5: (time(14, 0), time(15, 0)),
+                    6: (time(15, 0), time(16, 0)),
+                }
+
+                for day in days_order:
+                    timetable_data[day] = {}
+                    
+                for entry in entries:
+                    for period, (start, end) in period_times.items():
+                        if entry.start_time == start:
+                            # Store the entry, could potentially have multiple entries if teacher teaches same period in different grades
+                            # For simplicity now, just store the last one found, or consider storing a list if needed
+                            timetable_data[entry.day_of_week][period] = entry 
+                            break # Found the period for this entry
+            else:
+                 flash(f'Teacher with ID {teacher_id} not found.', 'warning')
+                 
+        except ValueError:
+             flash('Invalid Teacher ID specified.', 'danger')
+             selected_teacher_id = None # Reset selection
+
+    return render_template(
+        'admin/timetable_faculty.html',
+        teachers=teachers,
+        selected_teacher_id=selected_teacher_id,
+        selected_teacher=selected_teacher,
+        timetable_data=timetable_data
+    )

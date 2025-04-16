@@ -1,27 +1,87 @@
 {% extends "layout.html" %}
 
 {% block content %}
+<style>
+    .dashboard-title {
+        font-family: 'Courier New', Courier, monospace; /* Monospaced font */
+        font-size: 3rem; /* Larger font size */
+        font-weight: bold;
+        letter-spacing: 0.5em; /* Increased letter spacing */
+        text-align: center;
+        margin-top: 20px;
+        margin-bottom: 10px;
+    }
+    .dashboard-subtitle {
+        font-family: 'Times New Roman', Times, serif; /* Serif font */
+        font-style: italic;
+        font-size: 1.2rem;
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    .section-box {
+        border: 1px solid #ccc;
+        padding: 20px;
+        margin-bottom: 20px;
+        min-height: 250px; /* Adjust height as needed */
+        position: relative; /* Needed for absolute positioning of title */
+        margin-top: 20px; /* Space for the title */
+    }
+    .section-title {
+        position: absolute;
+        top: -10px; /* Position above the border */
+        left: 15px;
+        background-color: white; /* Match page background */
+        padding: 0 5px;
+        font-weight: bold;
+        color: #555;
+    }
+    .action-button {
+        display: block;
+        width: 80%;
+        margin: 15px auto; /* Centered with vertical spacing */
+        padding: 10px;
+        text-align: center;
+        font-size: 1rem;
+        /* Add more button styling as needed */
+    }
+    .quit-button-container {
+        text-align: center;
+        margin-top: 30px;
+    }
+</style>
+
 <div class="container mt-4">
-    <h1>Admin Dashboard</h1>
-    <div class="row mt-4">
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">User Management</h5>
-                    <p class="card-text">Manage students and teachers</p>
-                    <a href="{{ url_for('admin.manage_users') }}" class="btn btn-primary">Manage Users</a>
-                </div>
+    <h1 class="dashboard-title">ADMINISTRATOR</h1>
+    <p class="dashboard-subtitle">You are the Administrator</p>
+
+    <div class="row justify-content-center">
+        <!-- Modify Section -->
+        <div class="col-md-5">
+            <div class="section-box">
+                <span class="section-title">Modify</span>
+                <a href="{{ url_for('admin.manage_subjects') }}" class="btn btn-outline-secondary action-button">Subjects</a>
+                <a href="{{ url_for('admin.manage_faculties') }}" class="btn btn-outline-secondary action-button">Faculties</a>
+                <a href="{{ url_for('admin.manage_students') }}" class="btn btn-outline-secondary action-button">Students</a>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Add New User</h5>
-                    <p class="card-text">Add new student or teacher</p>
-                    <a href="{{ url_for('admin.add_user') }}" class="btn btn-success">Add User</a>
-                </div>
+
+        <!-- Timetable Section -->
+        <div class="col-md-5">
+            <div class="section-box">
+                <span class="section-title">Timetable</span>
+                <a href="{{ url_for('admin.schedule_periods') }}" class="btn btn-outline-secondary action-button">Schedule Periods</a>
+                <a href="{{ url_for('admin.view_timetable_section') }}" class="btn btn-outline-secondary action-button">View Section-Wise</a>
+                <a href="{{ url_for('admin.view_timetable_faculty') }}" class="btn btn-outline-secondary action-button">View Faculty-wise</a>
             </div>
         </div>
     </div>
+
+    <!-- Quit Button -->
+    <div class="row">
+        <div class="col-12 quit-button-container">
+             <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger">Quit</a>
+        </div>
+    </div>
+
 </div>
 {% endblock %}
