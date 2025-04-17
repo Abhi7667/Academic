@@ -1,0 +1,177 @@
+{% extends 'layout.html' %}
+
+{% block title %}Section Timetable - Academic Progress Hub{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h1 class="mb-0">Timetable Management</h1>
+        <p class="text-muted">View section-wise timetables</p>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('teacher.timetable_generator') }}" class="btn btn-primary me-2">
+            <i class="fas fa-magic me-2"></i>Auto Generate
+        </a>
+    </div>
+</div>
+
+<!-- Timetable View Options -->
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link active" href="{{ url_for('teacher.timetable_section') }}">
+            <i class="fas fa-users me-2"></i>Section Timetable
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('teacher.timetable_faculty') }}">
+            <i class="fas fa-chalkboard-teacher me-2"></i>Faculty Timetable
+        </a>
+    </li>
+</ul>
+
+<!-- Admin Notification Button -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>View section timetables below. To request changes, please notify the admin.
+            <button type="button" class="btn btn-outline-primary ms-3" data-bs-toggle="modal" data-bs-target="#notifyAdminModal">
+                <i class="fas fa-bell me-2"></i>Request Timetable Change
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Notification Modal -->
+<div class="modal fade" id="notifyAdminModal" tabindex="-1" aria-labelledby="notifyAdminModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="notifyAdminModalLabel">Request Timetable Change</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="notifyAdminForm">
+                    <div class="mb-3">
+                        <label for="changeType" class="form-label">Type of Change</label>
+                        <select class="form-select" id="changeType" required>
+                            <option value="">Select change type</option>
+                            <option value="schedule">Schedule change</option>
+                            <option value="room">Room change</option>
+                            <option value="subject">Subject assignment</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="changeDetails" class="form-label">Change Details</label>
+                        <textarea class="form-control" id="changeDetails" rows="4" required placeholder="Please describe the change you need..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="submitChangeRequest">Submit Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <!-- Grade/Section Selection -->
+    <form method="GET" action="{{ url_for('teacher.timetable_section') }}" class="row g-3 align-items-center mb-4">
+        <div class="col-auto">
+            <label for="gradeSelect" class="col-form-label">Select Section/Grade:</label>
+        </div>
+        <div class="col-auto">
+            <select class="form-select" id="gradeSelect" name="grade">
+                <option value="">-- Select Grade --</option>
+                {% for grade in available_grades %}
+                    <option value="{{ grade }}" {% if grade == selected_grade %}selected{% endif %}>{{ grade }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Load Timetable</button>
+        </div>
+    </form>
+
+    {% if selected_grade %}
+        <h3 class="mb-3">Timetable for Grade: {{ selected_grade }}</h3>
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Period 1<br><small>(9-10 AM)</small></th>
+                        <th>Period 2<br><small>(10-11 AM)</small></th>
+                        <th>Period 3<br><small>(11-12 PM)</small></th>
+                        <th>BREAK<br><small>(12-1 PM)</small></th>
+                        <th>Period 4<br><small>(1-2 PM)</small></th>
+                        <th>Period 5<br><small>(2-3 PM)</small></th>
+                        <th>Period 6<br><small>(3-4 PM)</small></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+                    {% set periods = range(1, 7) %}
+                    {% for day in days %}
+                        <tr>
+                            <th>{{ day }}</th>
+                            {% for period in periods %}
+                                {% set entry = timetable_data.get(day, {}).get(period) %}
+                                <td>
+                                    {% if entry %}
+                                        <div>
+                                            <strong>{{ entry.subject.code }}</strong><br>
+                                            <small>{{ entry.teacher.user.username }}</small>
+                                            {% if entry.room %}
+                                                <br><small>Room: {{ entry.room }}</small>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                {% if period == 3 %}
+                                    <td class="bg-light">BREAK</td>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            Please select a section/grade to view the timetable.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // Any specific JavaScript for this page if needed
+    
+    // Handle the change request submission
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('submitChangeRequest').addEventListener('click', function() {
+            // Simple validation
+            const changeType = document.getElementById('changeType').value;
+            const changeDetails = document.getElementById('changeDetails').value;
+            
+            if (!changeType || !changeDetails) {
+                alert('Please fill out all fields');
+                return;
+            }
+            
+            alert('Your request has been sent to the administrator.');
+            
+            // Close the modal and reset form
+            const modal = bootstrap.Modal.getInstance(document.getElementById('notifyAdminModal'));
+            modal.hide();
+            document.getElementById('notifyAdminForm').reset();
+        });
+    });
+</script>
+{% endblock %} 

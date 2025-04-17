@@ -1,11 +1,11 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from extensions import db
-from models import Subject, Timetable, Performance, Student, Teacher
+from models import Subject, Timetable, Performance, Student, Teacher, User
 from forms import SubjectForm, TimetableForm, PerformanceForm
 from sqlalchemy import func
 import logging
-from datetime import datetime
+from datetime import datetime, time
 from autogenerate import save_timetable as autogenerate_save_timetable, preview_timetable as autogenerate_preview_timetable
 
 # Configure logging
@@ -142,6 +142,13 @@ def delete_subject(subject_id):
 @teacher.route('/timetable', methods=['GET', 'POST'])
 @teacher_required
 def timetable():
+    # Redirect to timetable_section since we've removed the My Timetable view
+    return redirect(url_for('teacher.timetable_section'))
+
+# Keep the original implementation as a separate function for the API
+@teacher.route('/timetable/manage', methods=['GET', 'POST'])
+@teacher_required
+def manage_timetable():
     # Get teacher profile
     teacher_profile = Teacher.query.filter_by(user_id=current_user.id).first()
     
@@ -169,7 +176,7 @@ def timetable():
             db.session.commit()
             
             flash('Timetable entry added successfully!', 'success')
-            return redirect(url_for('teacher.timetable'))
+            return redirect(url_for('teacher.manage_timetable'))
             
         except Exception as e:
             db.session.rollback()
@@ -218,7 +225,7 @@ def delete_timetable(timetable_id):
         flash(f'Failed to delete timetable entry: {str(e)}', 'danger')
         logger.error(f"Timetable deletion error: {str(e)}")
     
-    return redirect(url_for('teacher.timetable'))
+    return redirect(url_for('teacher.manage_timetable'))
 
 @teacher.route('/update_timetable', methods=['POST'])
 @teacher_required
@@ -270,7 +277,7 @@ def update_timetable():
         flash(f'Failed to update timetable: {str(e)}', 'danger')
         logger.error(f"Timetable update error: {str(e)}")
     
-    return redirect(url_for('teacher.timetable'))
+    return redirect(url_for('teacher.manage_timetable'))
 
 @teacher.route('/timetable/autogenerate', methods=['GET'])
 @teacher_required
@@ -296,7 +303,7 @@ def save_timetable():
     else:
         flash(message, 'danger')
     
-    return redirect(url_for('teacher.timetable'))
+    return redirect(url_for('teacher.timetable_section'))
 
 @teacher.route('/performance', methods=['GET', 'POST'])
 @teacher_required
@@ -384,3 +391,105 @@ def delete_performance(performance_id):
         logger.error(f"Performance deletion error: {str(e)}")
     
     return redirect(url_for('teacher.student_performance'))
+
+@teacher.route('/timetable_section', methods=['GET'])
+@teacher_required
+def timetable_section():
+    # Get teacher profile
+    teacher_profile = Teacher.query.filter_by(user_id=current_user.id).first()
+    
+    selected_grade = request.args.get('grade')
+    
+    # Get distinct available grades
+    grades_query = db.session.query(Timetable.grade).distinct().filter(Timetable.grade.isnot(None))
+    available_grades = sorted([g[0] for g in grades_query.all()])
+    
+    timetable_data = {}
+    if selected_grade:
+        # Fetch timetable entries for the selected grade
+        entries = Timetable.query.filter_by(grade=selected_grade)\
+                               .options(db.joinedload(Timetable.subject), db.joinedload(Timetable.teacher).joinedload(Teacher.user))\
+                               .all()
+        
+        # Organize data for the template: {day: {period: entry}}
+        days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        period_times = {
+            1: (time(9, 0), time(10, 0)),
+            2: (time(10, 0), time(11, 0)),
+            3: (time(11, 0), time(12, 0)),
+            4: (time(13, 0), time(14, 0)),
+            5: (time(14, 0), time(15, 0)),
+            6: (time(15, 0), time(16, 0)),
+        }
+
+        for day in days_order:
+            timetable_data[day] = {}
+            
+        for entry in entries:
+            for period, (start, end) in period_times.items():
+                if entry.start_time == start:
+                    timetable_data[entry.day_of_week][period] = entry
+                    break # Found the period for this entry
+
+    return render_template(
+        'teacher/timetable_section.html',
+        available_grades=available_grades,
+        selected_grade=selected_grade,
+        timetable_data=timetable_data
+    )
+
+@teacher.route('/timetable_faculty', methods=['GET'])
+@teacher_required
+def timetable_faculty():
+    # Get teacher profile
+    teacher_profile = Teacher.query.filter_by(user_id=current_user.id).first()
+    
+    selected_teacher_id = request.args.get('teacher_id')
+    
+    # Get all teachers for the dropdown
+    teachers = Teacher.query.join(User).filter(User.role == 'teacher').order_by(User.username).all()
+    
+    timetable_data = {}
+    selected_teacher = None
+    
+    if selected_teacher_id:
+        try:
+            teacher_id = int(selected_teacher_id)
+            selected_teacher = Teacher.query.get(teacher_id)
+            
+            if selected_teacher:
+                # Fetch timetable entries for the selected teacher
+                entries = Timetable.query.filter_by(teacher_id=teacher_id)\
+                                       .options(db.joinedload(Timetable.subject))\
+                                       .all()
+                
+                # Organize data for the template: {day: {period: entry}}
+                days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+                period_times = {
+                    1: (time(9, 0), time(10, 0)),
+                    2: (time(10, 0), time(11, 0)),
+                    3: (time(11, 0), time(12, 0)),
+                    4: (time(13, 0), time(14, 0)),
+                    5: (time(14, 0), time(15, 0)),
+                    6: (time(15, 0), time(16, 0)),
+                }
+
+                for day in days_order:
+                    timetable_data[day] = {}
+                    
+                for entry in entries:
+                    for period, (start, end) in period_times.items():
+                        if entry.start_time == start:
+                            timetable_data[entry.day_of_week][period] = entry
+                            break # Found the period for this entry
+        except Exception as e:
+            flash(f'Error loading faculty timetable: {str(e)}', 'danger')
+            logger.error(f"Faculty timetable error: {str(e)}")
+
+    return render_template(
+        'teacher/timetable_faculty.html',
+        teachers=teachers,
+        selected_teacher=selected_teacher,
+        selected_teacher_id=selected_teacher_id,
+        timetable_data=timetable_data
+    )

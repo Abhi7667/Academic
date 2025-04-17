@@ -12,6 +12,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(10), nullable=False)  # 'admin', 'teacher' or 'student'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
     
     # Relationships
     teacher_profile = db.relationship('Teacher', backref='user', uselist=False, cascade='all, delete-orphan')

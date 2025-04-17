@@ -20,6 +20,66 @@
     </div>
 </div>
 
+<!-- Timetable View Options -->
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link active" href="{{ url_for('teacher.timetable_section') }}">
+            <i class="fas fa-users me-2"></i>Section Timetable
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('teacher.timetable_faculty') }}">
+            <i class="fas fa-chalkboard-teacher me-2"></i>Faculty Timetable
+        </a>
+    </li>
+</ul>
+
+<!-- Admin Notification Button -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>View your timetable below. To request changes, please notify the admin.
+            <button type="button" class="btn btn-outline-primary ms-3" data-bs-toggle="modal" data-bs-target="#notifyAdminModal">
+                <i class="fas fa-bell me-2"></i>Request Timetable Change
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Notification Modal -->
+<div class="modal fade" id="notifyAdminModal" tabindex="-1" aria-labelledby="notifyAdminModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="notifyAdminModalLabel">Request Timetable Change</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="notifyAdminForm">
+                    <div class="mb-3">
+                        <label for="changeType" class="form-label">Type of Change</label>
+                        <select class="form-select" id="changeType" required>
+                            <option value="">Select change type</option>
+                            <option value="schedule">Schedule change</option>
+                            <option value="room">Room change</option>
+                            <option value="subject">Subject assignment</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="changeDetails" class="form-label">Change Details</label>
+                        <textarea class="form-control" id="changeDetails" rows="4" required placeholder="Please describe the change you need..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="submitChangeRequest">Submit Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-lg-4 mb-4">
         <div class="card">
@@ -242,7 +302,28 @@
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
         });
+
+        // Handle the change request submission
+        document.getElementById('submitChangeRequest').addEventListener('click', function() {
+            // Here you would normally send this data to your backend
+            // For now we'll just show a success message and close the modal
+            
+            // Simple validation
+            const changeType = document.getElementById('changeType').value;
+            const changeDetails = document.getElementById('changeDetails').value;
+            
+            if (!changeType || !changeDetails) {
+                alert('Please fill out all fields');
+                return;
+            }
+            
+            alert('Your request has been sent to the administrator.');
+            
+            // Close the modal and reset form
+            const modal = bootstrap.Modal.getInstance(document.getElementById('notifyAdminModal'));
+            modal.hide();
+            document.getElementById('notifyAdminForm').reset();
+        });
     });
 </script>
-</div>
 {% endblock %}

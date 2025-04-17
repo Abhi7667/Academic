@@ -24,13 +24,40 @@
                     <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
                 </div>
                 <div class="mb-3">
+                    <label for="password" class="form-label">Password (leave blank to keep current)</label>
+                    <input type="password" class="form-control" id="password" name="password">
+                </div>
+                <div class="mb-3">
                     <label for="role" class="form-label">Role</label>
-                    <select class="form-select" id="role" name="role" required>
+                    <select class="form-select" id="role" name="role" required onchange="updateProfileFields()">
                         <option value="student" {% if user.role == 'student' %}selected{% endif %}>Student</option>
                         <option value="teacher" {% if user.role == 'teacher' %}selected{% endif %}>Teacher</option>
                         <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
                     </select>
                 </div>
+                
+                <!-- Student Profile Fields -->
+                <div id="student-fields" class="profile-fields mb-3" {% if user.role != 'student' %}style="display: none;"{% endif %}>
+                    <h4>Student Details</h4>
+                    <div class="mb-3">
+                        <label for="grade" class="form-label">Grade/Class</label>
+                        <input type="text" class="form-control" id="grade" name="grade" value="{{ student_profile.grade if student_profile else '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="roll_number" class="form-label">Roll Number</label>
+                        <input type="text" class="form-control" id="roll_number" name="roll_number" value="{{ student_profile.roll_number if student_profile else '' }}">
+                    </div>
+                </div>
+                
+                <!-- Teacher Profile Fields -->
+                <div id="teacher-fields" class="profile-fields mb-3" {% if user.role != 'teacher' %}style="display: none;"{% endif %}>
+                    <h4>Teacher Details</h4>
+                    <div class="mb-3">
+                        <label for="department" class="form-label">Department</label>
+                        <input type="text" class="form-control" id="department" name="department" value="{{ teacher_profile.department if teacher_profile else '' }}">
+                    </div>
+                </div>
+                
                 <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {% if user.is_active %}checked{% endif %}>
@@ -43,4 +70,25 @@
         </div>
     </div>
 </div>
+
+<script>
+function updateProfileFields() {
+    const role = document.getElementById('role').value;
+    
+    // Hide all profile fields
+    document.querySelectorAll('.profile-fields').forEach(field => {
+        field.style.display = 'none';
+    });
+    
+    // Show fields based on selected role
+    if (role === 'student') {
+        document.getElementById('student-fields').style.display = 'block';
+    } else if (role === 'teacher') {
+        document.getElementById('teacher-fields').style.display = 'block';
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', updateProfileFields);
+</script>
 {% endblock %}

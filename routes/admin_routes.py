@@ -99,6 +99,10 @@ def add_user():
 def edit_user(user_id):
     user = User.query.get_or_404(user_id)
     
+    # Get the related profiles if they exist
+    teacher_profile = Teacher.query.filter_by(user_id=user_id).first()
+    student_profile = Student.query.filter_by(user_id=user_id).first()
+    
     if request.method == 'POST':
         username = request.form['username']
         email = request.form['email']
@@ -123,11 +127,45 @@ def edit_user(user_id):
             return redirect(url_for('admin.edit_user', user_id=user_id))
         
         try:
+            # Update basic user info
             user.username = username
             user.email = email
-            user.role = role
             user.is_active = is_active
             
+            # Handle role change
+            if user.role != role:
+                # If changing to teacher
+                if role == 'teacher' and not teacher_profile:
+                    if student_profile:
+                        db.session.delete(student_profile)
+                    new_profile = Teacher(user_id=user.id)
+                    db.session.add(new_profile)
+                # If changing to student
+                elif role == 'student' and not student_profile:
+                    if teacher_profile:
+                        db.session.delete(teacher_profile)
+                    new_profile = Student(user_id=user.id)
+                    db.session.add(new_profile)
+                # If changing to admin
+                elif role == 'admin':
+                    if teacher_profile:
+                        db.session.delete(teacher_profile)
+                    if student_profile:
+                        db.session.delete(student_profile)
+                
+                user.role = role
+            
+            # Update profile specific data if provided in the form
+            if role == 'teacher' and teacher_profile and 'department' in request.form:
+                teacher_profile.department = request.form['department']
+            
+            if role == 'student' and student_profile:
+                if 'grade' in request.form:
+                    student_profile.grade = request.form['grade']
+                if 'roll_number' in request.form:
+                    student_profile.roll_number = request.form['roll_number']
+            
+            # Update password if provided
             if 'password' in request.form and request.form['password']:
                 user.set_password(request.form['password'])
             
@@ -140,7 +178,7 @@ def edit_user(user_id):
             flash(f'Error updating user: {str(e)}', 'danger')
             logger.error(f"User update error: {str(e)}")
     
-    return render_template('admin/edit_user.html', user=user)
+    return render_template('admin/edit_user.html', user=user, teacher_profile=teacher_profile, student_profile=student_profile)
 
 @admin.route('/user/delete/<int:user_id>', methods=['POST'])
 @admin_required
