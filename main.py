@@ -1,3 +1,4 @@
+# This file starts our school website
 from app import app
 
 if __name__ == "__main__":

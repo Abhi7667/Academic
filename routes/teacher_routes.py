@@ -1,12 +1,11 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from extensions import db
-from models import Subject, Timetable, Performance, Student, Teacher, User
+from models import Subject, Timetable, Performance, Student, Teacher, User, TimetableChangeRequest
 from forms import SubjectForm, TimetableForm, PerformanceForm
 from sqlalchemy import func
 import logging
-from datetime import datetime, time
-from autogenerate import save_timetable as autogenerate_save_timetable, preview_timetable as autogenerate_preview_timetable
+from datetime import datetime, time, date
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -279,32 +278,6 @@ def update_timetable():
     
     return redirect(url_for('teacher.manage_timetable'))
 
-@teacher.route('/timetable/autogenerate', methods=['GET'])
-@teacher_required
-def timetable_generator():
-    return render_template('teacher/autogenerate.html')
-
-@teacher.route('/timetable/preview', methods=['POST'])
-@teacher_required
-def preview_timetable():
-    # Get teacher profile
-    teacher_profile = Teacher.query.filter_by(user_id=current_user.id).first()
-    return autogenerate_preview_timetable(teacher_profile.id, request.form)
-
-@teacher.route('/timetable/save', methods=['POST'])
-@teacher_required
-def save_timetable():
-    # Get teacher profile
-    teacher_profile = Teacher.query.filter_by(user_id=current_user.id).first()
-    
-    success, message = autogenerate_save_timetable(teacher_profile.id, request.form)
-    if success:
-        flash(message, 'success')
-    else:
-        flash(message, 'danger')
-    
-    return redirect(url_for('teacher.timetable_section'))
-
 @teacher.route('/performance', methods=['GET', 'POST'])
 @teacher_required
 def student_performance():
@@ -493,3 +466,46 @@ def timetable_faculty():
         selected_teacher_id=selected_teacher_id,
         timetable_data=timetable_data
     )
+
+# Handle the timetable change request submission
+@teacher.route('/submit_timetable_change_request', methods=['POST'])
+@teacher_required
+def submit_timetable_change_request():
+    # Get teacher profile
+    teacher_profile = Teacher.query.filter_by(user_id=current_user.id).first()
+    
+    # Get data from request
+    data = request.json
+    
+    try:
+        # Parse date if provided
+        request_date = None
+        if data.get('date') and data['date'].strip():
+            request_date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+        
+        # Create change request
+        change_request = TimetableChangeRequest(
+            teacher_id=teacher_profile.id,
+            type=data['type'],
+            day=data['day'],
+            period=int(data['period']),
+            date=request_date,
+            reason=data['reason'],
+            status='pending'
+        )
+        
+        db.session.add(change_request)
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Your change request has been submitted successfully'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Change request submission error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Failed to submit change request: {str(e)}'
+        }), 500

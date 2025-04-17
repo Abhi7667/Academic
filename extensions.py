@@ -1,8 +1,8 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 
-# Initialize SQLAlchemy
+# This helps us store information in our database
 db = SQLAlchemy()
 
-# Configure Flask-Login
+# This helps remember who is using the website
 login_manager = LoginManager()

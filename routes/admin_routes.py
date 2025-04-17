@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from extensions import db
-from models import User, Teacher, Student, Subject, Timetable
+from models import User, Teacher, Student, Subject, Timetable, Performance, Notification, TimetableChangeRequest
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, SubmitField
 from wtforms.validators import DataRequired
@@ -467,6 +467,7 @@ def view_timetable_faculty():
     
     timetable_data = {}
     selected_teacher = None
+    change_requests = []
     
     if selected_teacher_id:
         try:
@@ -478,6 +479,12 @@ def view_timetable_faculty():
                 entries = Timetable.query.filter_by(teacher_id=teacher_id)\
                                        .options(db.joinedload(Timetable.subject))\
                                        .all()
+                
+                # Fetch pending change requests for this teacher
+                change_requests = TimetableChangeRequest.query.filter_by(
+                    teacher_id=teacher_id,
+                    status='pending'
+                ).order_by(TimetableChangeRequest.created_at.desc()).all()
                 
                 # Organize data for the template: {day: {period: entry}}
                 days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -512,5 +519,39 @@ def view_timetable_faculty():
         teachers=teachers,
         selected_teacher_id=selected_teacher_id,
         selected_teacher=selected_teacher,
-        timetable_data=timetable_data
+        timetable_data=timetable_data,
+        change_requests=change_requests
     )
+
+@admin.route('/timetable/change-request/<int:request_id>/<action>', methods=['POST'])
+@admin_required
+def handle_change_request(request_id, action):
+    # Verify action is valid
+    if action not in ['approve', 'reject']:
+        flash('Invalid action specified.', 'danger')
+        return redirect(url_for('admin.view_timetable_faculty'))
+    
+    # Get the change request
+    change_request = TimetableChangeRequest.query.get_or_404(request_id)
+    
+    try:
+        # Update the request status
+        change_request.status = 'approved' if action == 'approve' else 'rejected'
+        db.session.commit()
+        
+        # Get the teacher's name for the flash message
+        teacher_name = change_request.teacher.user.username
+        
+        if action == 'approve':
+            flash(f'Change request from {teacher_name} has been approved.', 'success')
+            # Here you could also implement the actual schedule change if needed
+        else:
+            flash(f'Change request from {teacher_name} has been rejected.', 'info')
+        
+        # Redirect back to the faculty timetable view with the same teacher selected
+        return redirect(url_for('admin.view_timetable_faculty', teacher_id=change_request.teacher_id))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error processing change request: {str(e)}', 'danger')
+        return redirect(url_for('admin.view_timetable_faculty'))

@@ -105,8 +105,14 @@
 
     {% if selected_grade %}
         <h3 class="mb-3">Timetable for Grade: {{ selected_grade }}</h3>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div></div> <!-- Empty div for flex spacing -->
+            <button id="downloadBtn" class="btn btn-outline-info">
+                <i class="fas fa-download me-2"></i>Download Timetable
+            </button>
+        </div>
         <div class="table-responsive">
-            <table class="table table-bordered timetable-grid">
+            <table class="table table-bordered timetable-grid" id="timetableTable">
                 <thead>
                     <tr>
                         <th>Day</th>
@@ -160,5 +166,38 @@
 {{ super() }} {# Include scripts from layout.html if any #}
 <script>
     // Add any specific JavaScript for this page if needed
+    document.addEventListener('DOMContentLoaded', function() {
+        // Download functionality
+        document.getElementById('downloadBtn')?.addEventListener('click', function() {
+            const table = document.getElementById('timetableTable');
+            const gradeName = "{{ selected_grade if selected_grade else 'section' }}";
+            
+            if (!table) return;
+            
+            const html = table.outerHTML;
+            
+            // Create a styled blob
+            const style = `
+                <style>
+                    table { border-collapse: collapse; width: 100%; }
+                    th, td { border: 1px solid black; padding: 8px; text-align: center; }
+                    .day-header { font-weight: bold; }
+                    .period-header { font-weight: bold; }
+                    .subject-code { font-weight: bold; }
+                    .recess { font-weight: bold; text-align: center; }
+                </style>
+            `;
+            
+            const blob = new Blob([`<html><head>${style}</head><body><h2>Timetable for Grade: ${gradeName}</h2>${html}</body></html>`], { type: 'application/vnd.ms-excel' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Grade_${gradeName}_timetable.xls`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        });
+    });
 </script>
 {% endblock %} 

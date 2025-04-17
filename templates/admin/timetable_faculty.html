@@ -80,6 +80,36 @@
         color: #ccd6f6;
         border-color: #0a7bec;
     }
+    .change-request-card {
+        background-color: #112240;
+        border: 1px solid #0a7bec;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .change-request-title {
+        color: #64ffda;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    .change-request-item {
+        border-left: 3px solid #0a7bec;
+        padding: 8px 15px;
+        margin-bottom: 8px;
+        background-color: rgba(10, 123, 236, 0.1);
+    }
+    .change-request-badge {
+        background-color: #64ffda;
+        color: #0a1929;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: bold;
+    }
+    .no-requests {
+        color: #8892b0;
+        font-style: italic;
+    }
 </style>
 
 <div class="container mt-4">
@@ -106,9 +136,48 @@
     </form>
 
     {% if selected_teacher %}
+        <!-- Change Request Notification Card -->
+        <div class="change-request-card">
+            <div class="change-request-title">
+                <i class="fas fa-bell"></i> Change Requests
+                {% if change_requests and change_requests|length > 0 %}
+                    <span class="change-request-badge">{{ change_requests|length }}</span>
+                {% endif %}
+            </div>
+            
+            {% if change_requests and change_requests|length > 0 %}
+                {% for request in change_requests %}
+                    <div class="change-request-item">
+                        <strong>{{ request.day }}</strong> - Period {{ request.period }} ({{ request.date|default('') }})<br>
+                        <small>{{ request.reason }}</small>
+                        <div class="mt-2">
+                            <form class="d-inline" method="POST" action="{{ url_for('admin.handle_change_request', request_id=request.id, action='approve') }}">
+                                <button type="submit" class="btn btn-success btn-sm">
+                                    <i class="fas fa-check"></i> Approve
+                                </button>
+                            </form>
+                            <form class="d-inline" method="POST" action="{{ url_for('admin.handle_change_request', request_id=request.id, action='reject') }}">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-times"></i> Reject
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="no-requests">No change requests pending for this faculty.</p>
+            {% endif %}
+        </div>
+
         <h3 class="mb-3">Timetable for: {{ selected_teacher.user.username }}</h3>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div></div> <!-- Empty div for flex spacing -->
+            <button id="downloadBtn" class="btn btn-outline-info">
+                <i class="fas fa-download me-2"></i>Download Timetable
+            </button>
+        </div>
         <div class="table-responsive">
-            <table class="table table-bordered timetable-grid">
+            <table class="table table-bordered timetable-grid" id="timetableTable">
                 <thead>
                     <tr>
                         <th>Day</th>
@@ -162,5 +231,38 @@
 {{ super() }} {# Include scripts from layout.html if any #}
 <script>
     // Add any specific JavaScript for this page if needed
+    document.addEventListener('DOMContentLoaded', function() {
+        // Download functionality
+        document.getElementById('downloadBtn')?.addEventListener('click', function() {
+            const table = document.getElementById('timetableTable');
+            const teacherName = "{{ selected_teacher.user.username if selected_teacher else 'faculty' }}";
+            
+            if (!table) return;
+            
+            const html = table.outerHTML;
+            
+            // Create a styled blob
+            const style = `
+                <style>
+                    table { border-collapse: collapse; width: 100%; }
+                    th, td { border: 1px solid black; padding: 8px; text-align: center; }
+                    .day-header { font-weight: bold; }
+                    .period-header { font-weight: bold; }
+                    .subject-code { font-weight: bold; }
+                    .recess { font-weight: bold; text-align: center; }
+                </style>
+            `;
+            
+            const blob = new Blob([`<html><head>${style}</head><body><h2>Timetable for ${teacherName}</h2>${html}</body></html>`], { type: 'application/vnd.ms-excel' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${teacherName.replace(/\s+/g, '_')}_timetable.xls`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        });
+    });
 </script>
 {% endblock %} 

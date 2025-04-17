@@ -1,21 +1,20 @@
 import os
 
-# Database configuration
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# This file has settings for our website
 
-# If not provided, fallback to constructing from individual parameters
-if not DATABASE_URL:
-    db_user = os.environ.get("PGUSER", "postgres")
-    db_password = os.environ.get("PGPASSWORD", "postgres")
-    db_host = os.environ.get("PGHOST", "localhost")
-    db_port = os.environ.get("PGPORT", "5432")
-    db_name = os.environ.get("PGDATABASE", "academic_hub")
-    
-    DATABASE_URL = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+# Database settings - where to store all the information
+DATABASE_URL = "sqlite:///database.db"
 
-# App configuration
+# Website settings
 class Config:
-    SECRET_KEY = os.environ.get("SESSION_SECRET", "dev_key")
+    # Secret code for safety
+    SECRET_KEY = "school_website_secret_key"
+    
+    # Where to find the database
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    
+    # Technical setting we don't need to worry about
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Show errors when they happen
     DEBUG = True

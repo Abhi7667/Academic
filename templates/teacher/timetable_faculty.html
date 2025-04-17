@@ -3,15 +3,113 @@
 {% block title %}Faculty Timetable - Academic Progress Hub{% endblock %}
 
 {% block content %}
+<style>
+    /* Dark theme styling to match admin templates */
+    body {
+        background-color: #0a1929; /* Dark background for the whole page */
+        color: #e0e0e0; /* Light text color */
+    }
+    .container {
+        background-color: #0a1929;
+    }
+    h1, h3, label {
+        color: #ccd6f6;
+    }
+    .form-select, .btn-primary {
+        background-color: #112240; /* Darker element background */
+        color: #ccd6f6;
+        border: 1px solid #0a7bec;
+    }
+    .form-select {
+        appearance: none; /* Optional: for custom dropdown arrow */
+    }
+    .btn-primary:hover {
+        background-color: #1a365d;
+        border-color: #64ffda;
+    }
+    .btn-outline-primary {
+        border-color: #0a7bec;
+        color: #ccd6f6;
+    }
+    .btn-outline-primary:hover {
+        background-color: #1a365d;
+        color: #64ffda;
+        border-color: #64ffda;
+    }
+    .table-responsive {
+        border: 1px solid #0a7bec; /* Border around the table */
+    }
+    .table th, .table td {
+        border: 1px solid #0a7bec; /* Blue borders */
+        text-align: center;
+        vertical-align: middle;
+        min-width: 120px;
+        height: 80px;
+        position: relative;
+        background-color: #112240; /* Dark cell background */
+        color: #ccd6f6; /* Light text in cells */
+    }
+    .table th {
+        background-color: #022343; /* Slightly different header background */
+        color: #64ffda; /* Accent color for headers */
+    }
+    .table tr th:first-child {
+        font-weight: bold;
+        background-color: #011931; /* Darker day header */
+        width: 100px;
+        color: #64ffda;
+    }
+    .bg-light {
+        background-color: #021b34 !important; /* Dark recess background */
+        font-weight: bold;
+        color: #64ffda !important;
+        text-align: center;
+        min-width: 80px; /* Make break column narrower */
+    }
+    .text-muted {
+        color: #8892b0 !important; /* Ensure muted text is visible */
+    }
+    .alert-info {
+        background-color: #112240;
+        color: #ccd6f6;
+        border-color: #0a7bec;
+    }
+    .modal-content {
+        background-color: #112240;
+        color: #ccd6f6;
+        border: 1px solid #0a7bec;
+    }
+    .modal-header, .modal-footer {
+        border-color: #0a7bec;
+    }
+    .nav-tabs .nav-link {
+        color: #ccd6f6;
+    }
+    .nav-tabs .nav-link.active {
+        background-color: #112240;
+        color: #64ffda;
+        border-color: #0a7bec #0a7bec transparent;
+    }
+    .form-control {
+        background-color: #0a1929;
+        border-color: #0a7bec;
+        color: #ccd6f6;
+    }
+    .form-control::placeholder {
+        color: #8892b0;
+    }
+    .form-control:focus {
+        background-color: #112240;
+        color: #ccd6f6;
+        border-color: #64ffda;
+        box-shadow: 0 0 0 0.25rem rgba(100, 255, 218, 0.25);
+    }
+</style>
+
 <div class="row mb-4 align-items-center">
     <div class="col">
         <h1 class="mb-0">Timetable Management</h1>
         <p class="text-muted">View faculty-wise timetables</p>
-    </div>
-    <div class="col-auto">
-        <a href="{{ url_for('teacher.timetable_generator') }}" class="btn btn-primary me-2">
-            <i class="fas fa-magic me-2"></i>Auto Generate
-        </a>
     </div>
 </div>
 
@@ -62,6 +160,34 @@
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label for="daySelect" class="form-label">Day</label>
+                        <select class="form-select" id="daySelect" required>
+                            <option value="">Select day</option>
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                            <option value="Friday">Friday</option>
+                            <option value="Saturday">Saturday</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="periodSelect" class="form-label">Period</label>
+                        <select class="form-select" id="periodSelect" required>
+                            <option value="">Select period</option>
+                            <option value="1">Period 1 (9-10 AM)</option>
+                            <option value="2">Period 2 (10-11 AM)</option>
+                            <option value="3">Period 3 (11-12 PM)</option>
+                            <option value="4">Period 4 (1-2 PM)</option>
+                            <option value="5">Period 5 (2-3 PM)</option>
+                            <option value="6">Period 6 (3-4 PM)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="requestDate" class="form-label">Date (if applicable)</label>
+                        <input type="date" class="form-control" id="requestDate">
+                    </div>
+                    <div class="mb-3">
                         <label for="changeDetails" class="form-label">Change Details</label>
                         <textarea class="form-control" id="changeDetails" rows="4" required placeholder="Please describe the change you need..."></textarea>
                     </div>
@@ -98,8 +224,14 @@
 
     {% if selected_teacher %}
         <h3 class="mb-3">Timetable for: {{ selected_teacher.user.username }}</h3>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div></div> <!-- Empty div for flex spacing -->
+            <button id="downloadBtn" class="btn btn-outline-primary">
+                <i class="fas fa-download me-2"></i>Download Timetable
+            </button>
+        </div>
         <div class="table-responsive">
-            <table class="table table-bordered">
+            <table class="table table-bordered" id="timetableTable">
                 <thead>
                     <tr>
                         <th>Day</th>
@@ -155,24 +287,89 @@
 <script>
     // Any specific JavaScript for this page if needed
     
-    // Handle the change request submission
     document.addEventListener('DOMContentLoaded', function() {
+        // Download functionality
+        document.getElementById('downloadBtn')?.addEventListener('click', function() {
+            const table = document.getElementById('timetableTable');
+            const teacherName = "{{ selected_teacher.user.username if selected_teacher else 'faculty' }}";
+            
+            if (!table) return;
+            
+            const html = table.outerHTML;
+            
+            // Create a styled blob
+            const style = `
+                <style>
+                    table { border-collapse: collapse; width: 100%; }
+                    th, td { border: 1px solid black; padding: 8px; text-align: center; }
+                    th { font-weight: bold; background-color: #f8f9fa; }
+                    .bg-light { background-color: #f8f9fa; text-align: center; font-weight: bold; }
+                </style>
+            `;
+            
+            const blob = new Blob([`<html><head>${style}</head><body><h2>Timetable for ${teacherName}</h2>${html}</body></html>`], { type: 'application/vnd.ms-excel' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${teacherName.replace(/\s+/g, '_')}_timetable.xls`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        });
+
+        // Handle the change request submission
         document.getElementById('submitChangeRequest').addEventListener('click', function() {
-            // Simple validation
+            // Enhanced validation for all fields
             const changeType = document.getElementById('changeType').value;
+            const day = document.getElementById('daySelect').value;
+            const period = document.getElementById('periodSelect').value;
+            const requestDate = document.getElementById('requestDate').value;
             const changeDetails = document.getElementById('changeDetails').value;
             
-            if (!changeType || !changeDetails) {
-                alert('Please fill out all fields');
+            if (!changeType || !day || !period || !changeDetails) {
+                alert('Please fill out all required fields');
                 return;
             }
             
-            alert('Your request has been sent to the administrator.');
+            // Create request data object
+            const requestData = {
+                type: changeType,
+                day: day,
+                period: period,
+                date: requestDate,
+                reason: changeDetails,
+                teacher_id: "{{ current_user.id if current_user.is_authenticated else '' }}"
+            };
             
-            // Close the modal and reset form
-            const modal = bootstrap.Modal.getInstance(document.getElementById('notifyAdminModal'));
-            modal.hide();
-            document.getElementById('notifyAdminForm').reset();
+            // Send the data to the backend
+            fetch("{{ url_for('teacher.submit_timetable_change_request') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': "{{ csrf_token() if csrf_token else '' }}"
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Show success message
+                alert('Your request has been sent to the administrator.');
+                
+                // Close the modal and reset form
+                const modal = bootstrap.Modal.getInstance(document.getElementById('notifyAdminModal'));
+                modal.hide();
+                document.getElementById('notifyAdminForm').reset();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('There was a problem submitting your request. Please try again.');
+            });
         });
     });
 </script>

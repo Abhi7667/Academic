@@ -1,55 +1,34 @@
 import os
-import logging
 from flask import Flask, render_template
-from dotenv import load_dotenv
 from extensions import db, login_manager
 
-# Load environment variables
-load_dotenv()
-
-# Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-# Create Flask application
+# This is where we set up our website
 app = Flask(__name__)
 
-# Security configuration
-app.secret_key = os.environ.get("SECRET_KEY")
-if not app.secret_key:
-    logger.warning("No SECRET_KEY found in environment variables. Using a temporary key for development.")
-    app.secret_key = os.urandom(24)
+# This is like a secret password for our website
+app.secret_key = os.environ.get("SECRET_KEY") or os.urandom(24)
 
-# Configure database with fallback to SQLite
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///database.db")
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_recycle": 300,
-    "pool_pre_ping": True,
-}
+# This tells our website where to store information
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# Initialize extensions
+# Start up our database and login system
 db.init_app(app)
 login_manager.init_app(app)
 login_manager.login_view = 'auth.login'
-login_manager.login_message_category = 'info'
 
-# Import models and create tables
+# Get ready to store information
 with app.app_context():
     from models import User, Student, Teacher, Subject, Timetable, Performance, Notification
     db.create_all()
-    logger.debug("Database tables created successfully.")
 
-# User loader for Flask-Login
+# This helps our website remember who is logged in
 @login_manager.user_loader
 def load_user(user_id):
     from models import User
     return User.query.get(int(user_id))
 
-# Register blueprints
+# Add all the different pages to our website
 from routes.auth_routes import auth as auth_bp
 from routes.teacher_routes import teacher as teacher_bp
 from routes.student_routes import student as student_bp
@@ -62,12 +41,12 @@ app.register_blueprint(student_bp)
 app.register_blueprint(notification_bp)
 app.register_blueprint(admin_bp)
 
-# Home route
+# This is what shows up when you visit the main page
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Error handlers
+# These handle errors when something goes wrong
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('errors/404.html'), 404
@@ -80,5 +59,6 @@ def server_error(e):
 def forbidden(e):
     return render_template('errors/403.html'), 403
 
+# This starts our website when we run this file
 if __name__ == "__main__":
     app.run(debug=True)
