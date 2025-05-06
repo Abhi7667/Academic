@@ -84,6 +84,90 @@
         color: #ccd6f6;
         border-color: #0a7bec;
     }
+    .conflict-warning {
+        position: absolute;
+        top: 0;
+        right: 0;
+        padding: 2px;
+        font-size: 20px;
+        color: #ffcc00;
+    }
+    .conflict-tooltip {
+        display: none;
+        position: absolute;
+        top: -5px;
+        left: 100%;
+        z-index: 1000;
+        padding: 10px;
+        background-color: #011931;
+        border: 1px solid #ffcc00;
+        color: #ffcc00;
+        border-radius: 5px;
+        width: 250px;
+        font-size: 0.85em;
+        text-align: left;
+    }
+    .conflict-warning:hover + .conflict-tooltip {
+        display: block;
+    }
+    .cell-container {
+        position: relative;
+    }
+    .cell-with-conflict {
+        border: 2px solid #ffcc00;
+    }
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 30px;
+    }
+    .switch input { 
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #112240;
+        transition: .4s;
+        border: 1px solid #0a7bec;
+    }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 22px;
+        width: 22px;
+        left: 4px;
+        bottom: 3px;
+        background-color: #8892b0;
+        transition: .4s;
+    }
+    input:checked + .slider {
+        background-color: #0a7bec;
+    }
+    input:checked + .slider:before {
+        transform: translateX(30px);
+        background-color: #ccd6f6;
+    }
+    .slider.round {
+        border-radius: 34px;
+    }
+    .slider.round:before {
+        border-radius: 50%;
+    }
+    .conflict-settings {
+        padding: 10px;
+        margin-bottom: 20px;
+        background-color: #112240;
+        border: 1px solid #0a7bec;
+        border-radius: 5px;
+    }
 </style>
 
 <div class="container mt-4">
@@ -108,7 +192,32 @@
     </form>
 
     {% if selected_grade %}
+        <div class="conflict-settings">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <label for="strictConflictCheck" class="form-label">Prevent faculty conflict assignments:</label>
+                </div>
+                <div class="col-auto">
+                    <label class="switch">
+                        <input type="checkbox" id="strictConflictCheck">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <div class="col">
+                    <small class="text-muted">When enabled, faculty cannot be assigned to multiple classes at the same time</small>
+                </div>
+            </div>
+        </div>
+
         <h3 class="mb-3">Timetable for Grade: {{ selected_grade }}</h3>
+        
+        {% if conflicts %}
+        <div class="alert alert-warning" role="alert">
+            <strong>Warning:</strong> There are scheduling conflicts where teachers are assigned to different classes at the same time. 
+            Look for the warning icons <i class="conflict-warning">⚠️</i> in the timetable.
+        </div>
+        {% endif %}
+        
         <div class="table-responsive">
             <table class="table table-bordered timetable-grid">
                 <thead>
@@ -131,35 +240,49 @@
                             <th class="day-header">{{ day }}</th>
                             {% for period in periods %}
                                 {% set entry = timetable_data.get(day, {}).get(period) %}
-                                <td>
-                                    {% if entry %}
-                                        <div class="subject-info">
-                                            <span class="subject-code">{{ entry.subject.code }}</span><br>
-                                            <span class="teacher-initials">{{ entry.teacher.user.username }}</span>
-                                            {# TODO: Add dropdown/button to change subject #}
-                                        </div>
-                                    {% else %}
-                                        <span class="text-muted">-</span>
-                                         {# TODO: Add dropdown/button to add subject #}
-                                    {% endif %}
+                                {% set conflict_key = day ~ '_' ~ period %}
+                                {% set has_conflict = conflicts and conflict_key in conflicts %}
+                                
+                                <td {% if has_conflict %}class="cell-with-conflict"{% endif %}>
+                                    <div class="cell-container">
+                                        {% if entry %}
+                                            <div class="subject-info">
+                                                <span class="subject-code">{{ entry.subject.code }}</span><br>
+                                                <span class="teacher-initials">{{ entry.teacher.user.username }}</span>
+                                            </div>
+                                            
+                                            {% if has_conflict %}
+                                                <span class="conflict-warning">⚠️</span>
+                                                <div class="conflict-tooltip">
+                                                    Teacher <strong>{{ conflicts[conflict_key].teacher_name }}</strong> is already scheduled for:
+                                                    <ul>
+                                                        {% for conflict in conflicts[conflict_key].conflicts %}
+                                                            <li>Grade {{ conflict.grade }} - {{ conflict.subject }}</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
 
-                                    {# Form to change/add subject for this slot #}
-                                    <form method="POST" action="{{ url_for('admin.update_schedule') }}" class="period-select-form">
-                                        <input type="hidden" name="grade" value="{{ selected_grade }}">
-                                        <input type="hidden" name="day" value="{{ day }}">
-                                        <input type="hidden" name="period" value="{{ period }}">
-                                        <select name="subject_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                                            <option value="">-- Assign --</option>
-                                            {% for subject in available_subjects %}
-                                                <option value="{{ subject.id }}" {% if entry and entry.subject_id == subject.id %}selected{% endif %}>
-                                                    {{ subject.code }} ({{ subject.teacher.user.username }})
-                                                </option>
-                                            {% endfor %}
-                                             <option value="remove">-- Remove --</option> {# Option to clear the slot #}
-                                        </select>
-                                        {# Consider adding a small save button instead of onchange submit #}
-                                        {# <button type="submit" class="btn btn-sm btn-link p-0">Save</button> #}
-                                    </form>
+                                        {# Form to change/add subject for this slot #}
+                                        <form method="POST" action="{{ url_for('admin.update_schedule') }}" class="period-select-form">
+                                            <input type="hidden" name="grade" value="{{ selected_grade }}">
+                                            <input type="hidden" name="day" value="{{ day }}">
+                                            <input type="hidden" name="period" value="{{ period }}">
+                                            <input type="hidden" name="error_on_conflict" class="error-on-conflict-input" value="false">
+                                            <select name="subject_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                                                <option value="">-- Assign --</option>
+                                                {% for subject in available_subjects %}
+                                                    <option value="{{ subject.id }}" {% if entry and entry.subject_id == subject.id %}selected{% endif %}>
+                                                        {{ subject.code }} ({{ subject.teacher.user.username }})
+                                                    </option>
+                                                {% endfor %}
+                                                <option value="remove">-- Remove --</option> {# Option to clear the slot #}
+                                            </select>
+                                        </form>
+                                    </div>
                                 </td>
                                 {% if period == 3 %}
                                     <td class="recess">BREAK</td>
@@ -182,9 +305,50 @@
 {% block scripts %}
 {{ super() }} {# Include scripts from layout.html if any #}
 <script>
-    // Add any specific JavaScript for this page if needed
     document.addEventListener('DOMContentLoaded', function() {
-        feather.replace(); // If using feather icons
+        // Initialize feather icons if used
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+        
+        // Set up conflict prevention toggle
+        const strictConflictCheck = document.getElementById('strictConflictCheck');
+        const conflictInputs = document.querySelectorAll('.error-on-conflict-input');
+        
+        if (strictConflictCheck) {
+            strictConflictCheck.addEventListener('change', function() {
+                const isChecked = this.checked;
+                
+                // Update all hidden inputs with the current toggle state
+                conflictInputs.forEach(input => {
+                    input.value = isChecked ? 'true' : 'false';
+                });
+                
+                // Show notification about the change
+                const message = isChecked ? 
+                    'Strict conflict prevention enabled. Faculty cannot be assigned to multiple classes at the same time.' : 
+                    'Conflict prevention disabled. Faculty scheduling conflicts will show warnings only.';
+                    
+                // Create a temporary notification
+                const notification = document.createElement('div');
+                notification.className = 'alert alert-info mt-2';
+                notification.textContent = message;
+                notification.style.position = 'fixed';
+                notification.style.bottom = '20px';
+                notification.style.right = '20px';
+                notification.style.zIndex = '9999';
+                document.body.appendChild(notification);
+                
+                // Remove after a few seconds
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    notification.style.transition = 'opacity 0.5s';
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 500);
+                }, 3000);
+            });
+        }
     });
 </script>
 {% endblock %} 

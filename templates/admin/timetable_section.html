@@ -60,6 +60,7 @@
     .subject-info {
         font-size: 0.9em;
         color: #8892b0; /* Muted color for subject info */
+        cursor: pointer; /* Add pointer cursor to indicate clickable */
     }
     .subject-code {
         font-weight: bold;
@@ -72,13 +73,75 @@
     .period-header {
         font-weight: bold;
     }
-     .text-muted {
+    .text-muted {
         color: #8892b0 !important; /* Ensure muted text is visible */
     }
     .alert-info {
         background-color: #112240;
         color: #ccd6f6;
         border-color: #0a7bec;
+    }
+    .grade-section {
+        margin-bottom: 40px;
+        border-bottom: 1px solid #0a7bec;
+        padding-bottom: 20px;
+    }
+    .grade-section:last-child {
+        border-bottom: none;
+    }
+    /* Modal styles */
+    .custom-modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+    }
+    .custom-modal-content {
+        background-color: #112240;
+        color: #ccd6f6;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #0a7bec;
+        border-radius: 5px;
+        width: 80%;
+        max-width: 500px;
+    }
+    .custom-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #0a7bec;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    .custom-modal-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #64ffda;
+    }
+    .close-modal {
+        color: #8892b0;
+        font-size: 28px;
+        cursor: pointer;
+    }
+    .close-modal:hover {
+        color: #64ffda;
+    }
+    .subject-details-row {
+        display: flex;
+        margin-bottom: 8px;
+    }
+    .subject-detail-label {
+        width: 120px;
+        font-weight: bold;
+        color: #64ffda;
+    }
+    .subject-detail-value {
+        flex: 1;
     }
 </style>
 
@@ -93,6 +156,7 @@
         <div class="col-auto">
             <select class="form-select" id="gradeSelect" name="grade">
                 <option value="">-- Select Grade --</option>
+                <option value="all" {% if selected_grade == 'all' %}selected{% endif %}>All</option>
                 {% for grade in available_grades %}
                     <option value="{{ grade }}" {% if grade == selected_grade %}selected{% endif %}>{{ grade }}</option>
                 {% endfor %}
@@ -103,7 +167,75 @@
         </div>
     </form>
 
-    {% if selected_grade %}
+    {% if selected_grade == 'all' %}
+        <h3 class="mb-3">Timetables for All Grades</h3>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div></div> <!-- Empty div for flex spacing -->
+            <button id="downloadAllBtn" class="btn btn-outline-info">
+                <i class="fas fa-download me-2"></i>Download All Timetables
+            </button>
+        </div>
+        
+        {% for grade in available_grades %}
+            <div class="grade-section" id="grade-{{ grade }}">
+                <h3 class="mb-3">Timetable for Grade: {{ grade }}</h3>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div></div> <!-- Empty div for flex spacing -->
+                    <button class="btn btn-outline-info download-single-btn" data-grade="{{ grade }}">
+                        <i class="fas fa-download me-2"></i>Download Timetable
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered timetable-grid timetable-{{ grade }}" id="timetableTable-{{ grade }}">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th class="period-header">Period 1<br><small>(9-10 AM)</small></th>
+                                <th class="period-header">Period 2<br><small>(10-11 AM)</small></th>
+                                <th class="period-header">Period 3<br><small>(11-12 PM)</small></th>
+                                <th class="period-header">BREAK<br><small>(12-1 PM)</small></th>
+                                <th class="period-header">Period 4<br><small>(1-2 PM)</small></th>
+                                <th class="period-header">Period 5<br><small>(2-3 PM)</small></th>
+                                <th class="period-header">Period 6<br><small>(3-4 PM)</small></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+                            {% set periods = range(1, 7) %}
+                            {% for day in days %}
+                                <tr>
+                                    <th class="day-header">{{ day }}</th>
+                                    {% for period in periods %}
+                                        <td>
+                                            {% set entry = all_grades_data.get(grade, {}).get(day, {}).get(period) %}
+                                            {% if entry %}
+                                                <div class="subject-info" data-subject-code="{{ entry.subject.code }}" 
+                                                    data-subject-name="{{ entry.subject.name }}" 
+                                                    data-teacher-name="{{ entry.teacher.user.full_name if entry.teacher.user.full_name else entry.teacher.user.username }}"
+                                                    data-teacher-id="{{ entry.teacher.id }}"
+                                                    data-grade="{{ grade }}" 
+                                                    data-day="{{ day }}" 
+                                                    data-period="{{ period }}">
+                                                    <span class="subject-code">{{ entry.subject.code }}</span><br>
+                                                    <span class="teacher-initials">{{ entry.teacher.user.username }}</span>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        {% if period == 3 %} {# Insert break column after period 3 #}
+                                            <td class="recess">BREAK</td>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endfor %}
+    
+    {% elif selected_grade %}
         <h3 class="mb-3">Timetable for Grade: {{ selected_grade }}</h3>
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div></div> <!-- Empty div for flex spacing -->
@@ -135,7 +267,13 @@
                                 {% set entry = timetable_data.get(day, {}).get(period) %}
                                 <td>
                                     {% if entry %}
-                                        <div class="subject-info">
+                                        <div class="subject-info" data-subject-code="{{ entry.subject.code }}" 
+                                            data-subject-name="{{ entry.subject.name }}" 
+                                            data-teacher-name="{{ entry.teacher.user.full_name if entry.teacher.user.full_name else entry.teacher.user.username }}"
+                                            data-teacher-id="{{ entry.teacher.id }}"
+                                            data-grade="{{ selected_grade }}" 
+                                            data-day="{{ day }}" 
+                                            data-period="{{ period }}">
                                             <span class="subject-code">{{ entry.subject.code }}</span><br>
                                             <span class="teacher-initials">{{ entry.teacher.user.username }}</span>
                                             {# Maybe add room if available: entry.room #}
@@ -159,36 +297,108 @@
         </div>
     {% endif %}
 
+    <!-- Modal for subject details popup -->
+    <div id="subjectModal" class="custom-modal">
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <div class="custom-modal-title" id="modalTitle">Subject Details</div>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div id="modalBody">
+                <div class="subject-details-row">
+                    <div class="subject-detail-label">Subject:</div>
+                    <div class="subject-detail-value" id="modalSubjectName"></div>
+                </div>
+                <div class="subject-details-row">
+                    <div class="subject-detail-label">Subject Code:</div>
+                    <div class="subject-detail-value" id="modalSubjectCode"></div>
+                </div>
+                <div class="subject-details-row">
+                    <div class="subject-detail-label">Teacher:</div>
+                    <div class="subject-detail-value" id="modalTeacherName"></div>
+                </div>
+                <div class="subject-details-row">
+                    <div class="subject-detail-label">Grade/Section:</div>
+                    <div class="subject-detail-value" id="modalGrade"></div>
+                </div>
+                <div class="subject-details-row">
+                    <div class="subject-detail-label">Day:</div>
+                    <div class="subject-detail-value" id="modalDay"></div>
+                </div>
+                <div class="subject-details-row">
+                    <div class="subject-detail-label">Period:</div>
+                    <div class="subject-detail-value" id="modalPeriod"></div>
+                </div>
+                <div class="subject-details-row">
+                    <div class="subject-detail-label">Time:</div>
+                    <div class="subject-detail-value" id="modalTime"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 {% endblock %}
 
 {% block scripts %}
 {{ super() }} {# Include scripts from layout.html if any #}
 <script>
-    // Add any specific JavaScript for this page if needed
     document.addEventListener('DOMContentLoaded', function() {
-        // Download functionality
+        // Download functionality for single timetable
         document.getElementById('downloadBtn')?.addEventListener('click', function() {
             const table = document.getElementById('timetableTable');
             const gradeName = "{{ selected_grade if selected_grade else 'section' }}";
             
             if (!table) return;
             
+            downloadTable(table, gradeName);
+        });
+
+        // Download functionality for individual tables in "All" view
+        document.querySelectorAll('.download-single-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const grade = this.getAttribute('data-grade');
+                const table = document.getElementById('timetableTable-' + grade);
+                
+                if (!table) return;
+                
+                downloadTable(table, grade);
+            });
+        });
+
+        // Download all timetables as one file
+        document.getElementById('downloadAllBtn')?.addEventListener('click', function() {
+            const allTables = document.querySelectorAll('[id^="timetableTable-"]');
+            if (!allTables.length) return;
+            
+            let content = '<html><head><style>' + getTableStyles() + '</style></head><body>';
+            content += '<h1>All Grade Timetables</h1>';
+            
+            allTables.forEach(function(table) {
+                const grade = table.id.split('-')[1];
+                content += '<h2>Timetable for Grade: ' + grade + '</h2>';
+                content += table.outerHTML;
+                content += '<div style="page-break-after: always;"></div>';
+            });
+            
+            content += '</body></html>';
+            
+            const blob = new Blob([content], { type: 'application/vnd.ms-excel' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'All_Grades_timetable.xls';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        });
+
+        // Helper function for downloading a single table
+        function downloadTable(table, gradeName) {
             const html = table.outerHTML;
             
-            // Create a styled blob
-            const style = `
-                <style>
-                    table { border-collapse: collapse; width: 100%; }
-                    th, td { border: 1px solid black; padding: 8px; text-align: center; }
-                    .day-header { font-weight: bold; }
-                    .period-header { font-weight: bold; }
-                    .subject-code { font-weight: bold; }
-                    .recess { font-weight: bold; text-align: center; }
-                </style>
-            `;
-            
-            const blob = new Blob([`<html><head>${style}</head><body><h2>Timetable for Grade: ${gradeName}</h2>${html}</body></html>`], { type: 'application/vnd.ms-excel' });
+            const blob = new Blob([`<html><head><style>${getTableStyles()}</style></head><body><h2>Timetable for Grade: ${gradeName}</h2>${html}</body></html>`], { type: 'application/vnd.ms-excel' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -197,6 +407,69 @@
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
+        }
+
+        // Get styles for the downloaded tables
+        function getTableStyles() {
+            return `
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid black; padding: 8px; text-align: center; }
+                .day-header { font-weight: bold; }
+                .period-header { font-weight: bold; }
+                .subject-code { font-weight: bold; }
+                .recess { font-weight: bold; text-align: center; }
+            `;
+        }
+
+        // Subject info popup functionality
+        const modal = document.getElementById('subjectModal');
+        const closeModal = document.querySelector('.close-modal');
+        
+        // Close modal when clicking the X
+        closeModal.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+        
+        // Close modal when clicking outside of it
+        window.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+        
+        // Add click event to all subject-info elements
+        document.querySelectorAll('.subject-info').forEach(function(element) {
+            element.addEventListener('click', function() {
+                const subjectCode = this.getAttribute('data-subject-code');
+                const subjectName = this.getAttribute('data-subject-name');
+                const teacherName = this.getAttribute('data-teacher-name');
+                const grade = this.getAttribute('data-grade');
+                const day = this.getAttribute('data-day');
+                const period = this.getAttribute('data-period');
+                
+                // Map period number to time
+                const periodTimes = {
+                    '1': '9:00 AM - 10:00 AM',
+                    '2': '10:00 AM - 11:00 AM',
+                    '3': '11:00 AM - 12:00 PM',
+                    '4': '1:00 PM - 2:00 PM',
+                    '5': '2:00 PM - 3:00 PM',
+                    '6': '3:00 PM - 4:00 PM'
+                };
+                
+                // Fill modal with data
+                document.getElementById('modalTitle').textContent = subjectName;
+                document.getElementById('modalSubjectName').textContent = subjectName;
+                document.getElementById('modalSubjectCode').textContent = subjectCode;
+                document.getElementById('modalTeacherName').textContent = teacherName;
+                document.getElementById('modalGrade').textContent = grade;
+                document.getElementById('modalDay').textContent = day;
+                document.getElementById('modalPeriod').textContent = 'Period ' + period;
+                document.getElementById('modalTime').textContent = periodTimes[period];
+                
+                // Show the modal
+                modal.style.display = 'block';
+            });
         });
     });
 </script>

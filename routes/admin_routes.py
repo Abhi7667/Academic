@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Teacher, Student, Subject, Timetable, Performance, Notification, TimetableChangeRequest
@@ -319,13 +319,48 @@ def schedule_periods():
                 if entry.start_time == start:
                     timetable_data[entry.day_of_week][period] = entry
                     break # Found the period for this entry
+        
+        # Check for conflicts in all time slots for this grade's timetable
+        # This will detect when teachers have classes in multiple grades at the same time
+        conflicts = {}
+        for day in days_order:
+            for period, (start, end) in period_times.items():
+                for entry in entries:
+                    if entry.day_of_week == day and entry.start_time == start:
+                        # Check if this teacher is scheduled elsewhere at the same time
+                        conflict_entries = Timetable.query.filter(
+                            Timetable.teacher_id == entry.teacher_id,
+                            Timetable.day_of_week == day,
+                            Timetable.start_time == start,
+                            Timetable.grade != selected_grade
+                        ).all()
+                        
+                        if conflict_entries:
+                            conflict_key = f"{day}_{period}"
+                            conflicts[conflict_key] = {
+                                'teacher_name': entry.teacher.user.username,
+                                'conflicts': [{'grade': ce.grade, 'subject': ce.subject.code} for ce in conflict_entries]
+                            }
+        
+        # Get any conflicts stored in the session from previous updates
+        session_conflicts = session.get('timetable_conflicts', {})
+        
+        # Merge session conflicts with detected conflicts
+        for key, value in session_conflicts.items():
+            if key not in conflicts:
+                conflicts[key] = {'teacher_name': value['teacher_name'], 'conflicts': [{'grade': value['grade'], 'subject': value['subject']}]}
+        
+        # Clear the session conflicts since we've processed them
+        if 'timetable_conflicts' in session:
+            session.pop('timetable_conflicts')
 
     return render_template(
         'admin/schedule_periods.html',
         available_grades=available_grades,
         selected_grade=selected_grade,
         timetable_data=timetable_data,
-        available_subjects=available_subjects
+        available_subjects=available_subjects,
+        conflicts=conflicts if selected_grade else {}
     )
 
 @admin.route('/schedule/update', methods=['POST'])
@@ -335,6 +370,9 @@ def update_schedule():
     day = request.form.get('day')
     period_str = request.form.get('period')
     subject_id_str = request.form.get('subject_id')
+    # By default, conflicts show warnings but don't block scheduling
+    # The client can set this to true to enforce strict conflict prevention
+    error_on_conflict = request.form.get('error_on_conflict') == 'true'
 
     if not all([grade, day, period_str, subject_id_str]):
         flash('Missing data for timetable update.', 'danger')
@@ -382,6 +420,37 @@ def update_schedule():
             grade=grade, day_of_week=day, start_time=start_time
         ).first()
         
+        # Check for teacher conflicts in the same time slot but different grade
+        conflict_entry = Timetable.query.filter(
+            Timetable.teacher_id == subject.teacher_id,
+            Timetable.day_of_week == day,
+            Timetable.start_time == start_time,
+            Timetable.grade != grade
+        ).first()
+        
+        if conflict_entry:
+            # Teacher is already scheduled in another grade at this time
+            conflict_message = f'Teacher {subject.teacher.user.username} is already scheduled ' \
+                              f'for grade {conflict_entry.grade} at this time slot ({day}, Period {period}).'
+            
+            if error_on_conflict:
+                # Prevent scheduling when strict conflict prevention is enabled
+                flash(f'Error: {conflict_message} Faculty cannot teach two classes at the same time.', 'danger')
+                return redirect(url_for('admin.schedule_periods', grade=grade))
+            else:
+                # Just show a warning but allow it
+                flash(f'Warning: {conflict_message}', 'warning')
+                
+            # Store conflict info in session for display in template
+            session_conflicts = session.get('timetable_conflicts', {})
+            conflict_key = f"{day}_{period}"
+            session_conflicts[conflict_key] = {
+                'teacher_name': subject.teacher.user.username,
+                'grade': conflict_entry.grade,
+                'subject': conflict_entry.subject.code
+            }
+            session['timetable_conflicts'] = session_conflicts
+        
         if existing_entry:
             # Update existing entry
             existing_entry.subject_id = subject.id
@@ -424,23 +493,46 @@ def view_timetable_section():
     available_grades = sorted([g[0] for g in grades_query.all()])
     
     timetable_data = {}
-    if selected_grade:
+    all_grades_data = {}
+    days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    period_times = {
+        1: (time(9, 0), time(10, 0)),
+        2: (time(10, 0), time(11, 0)),
+        3: (time(11, 0), time(12, 0)),
+        4: (time(13, 0), time(14, 0)),
+        5: (time(14, 0), time(15, 0)),
+        6: (time(15, 0), time(16, 0)),
+    }
+    
+    if selected_grade == 'all':
+        # Process data for all grades
+        for grade in available_grades:
+            # Initialize the grade dict in all_grades_data
+            all_grades_data[grade] = {}
+            
+            # Initialize days
+            for day in days_order:
+                all_grades_data[grade][day] = {}
+            
+            # Fetch entries for this grade
+            entries = Timetable.query.filter_by(grade=grade)\
+                                .options(db.joinedload(Timetable.subject), db.joinedload(Timetable.teacher).joinedload(Teacher.user))\
+                                .all()
+            
+            # Process entries
+            for entry in entries:
+                for period, (start, end) in period_times.items():
+                    if entry.start_time == start:
+                        all_grades_data[grade][entry.day_of_week][period] = entry
+                        break
+                        
+    elif selected_grade:
         # Fetch timetable entries for the selected grade
         entries = Timetable.query.filter_by(grade=selected_grade)\
                                .options(db.joinedload(Timetable.subject), db.joinedload(Timetable.teacher).joinedload(Teacher.user))\
                                .all()
         
         # Organize data for the template: {day: {period: entry}}
-        days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-        period_times = {
-            1: (time(9, 0), time(10, 0)),
-            2: (time(10, 0), time(11, 0)),
-            3: (time(11, 0), time(12, 0)),
-            4: (time(13, 0), time(14, 0)),
-            5: (time(14, 0), time(15, 0)),
-            6: (time(15, 0), time(16, 0)),
-        }
-
         for day in days_order:
             timetable_data[day] = {}
             
@@ -454,7 +546,8 @@ def view_timetable_section():
         'admin/timetable_section.html',
         available_grades=available_grades,
         selected_grade=selected_grade,
-        timetable_data=timetable_data
+        timetable_data=timetable_data,
+        all_grades_data=all_grades_data
     )
 
 @admin.route('/timetable/faculty', methods=['GET'])
